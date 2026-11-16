@@ -127,14 +127,50 @@ if opcion == "Inicio":
         "deportiva y las comunicaciones del equipo."
     )
 
-    # Próximo partido: datos de demostración
-    st.markdown("""
+        import json
+    import os
+
+    archivo_partido = "proximo_partido.json"
+    datos_partido = {
+        "encuentro": "BENIAJÁN C.F. - EQUIPO RIVAL",
+        "fecha_hora": "Sábado | 10:00 horas",
+        "campo": "Campo de fútbol",
+        "citacion": "09:15 horas"
+    }
+
+    if os.path.exists(archivo_partido):
+        with open(archivo_partido, "r", encoding="utf-8") as f:
+            datos_partido = json.load(f)
+
+    # Formulario oculto que solo ves tú al meter la contraseña
+    if es_admin:
+        with st.expander("✏️ Editar cartel de Próximo Partido"):
+            with st.form("form_proximo_partido"):
+                nuevo_encuentro = st.text_input("Partido (Local - Visitante):", value=datos_partido["encuentro"])
+                nueva_fecha = st.text_input("Día y hora:", value=datos_partido["fecha_hora"])
+                nuevo_campo = st.text_input("Campo:", value=datos_partido["campo"])
+                nueva_citacion = st.text_input("Hora de citación:", value=datos_partido["citacion"])
+                
+                if st.form_submit_button("💾 Actualizar cartel", type="primary"):
+                    datos_partido = {
+                        "encuentro": nuevo_encuentro,
+                        "fecha_hora": nueva_fecha,
+                        "campo": nuevo_campo,
+                        "citacion": nueva_citacion
+                    }
+                    with open(archivo_partido, "w", encoding="utf-8") as f:
+                        json.dump(datos_partido, f, ensure_ascii=False, indent=4)
+                    st.success("¡Cartel actualizado!")
+                    st.rerun()
+
+    # Tu tarjeta original conectada a los datos editables
+    st.markdown(f"""
     <div class="match">
         <h3>🏆 PRÓXIMO PARTIDO</h3>
-        <h2>BENIAJÁN C.F. - EQUIPO RIVAL</h2>
-        <p>📅 Sábado | 10:00 horas</p>
-        <p>📍 Campo de fútbol</p>
-        <p>⏰ Hora de citación: 09:15 horas</p>
+        <h2>{datos_partido['encuentro']}</h2>
+        <p>📅 {datos_partido['fecha_hora']}</p>
+        <p>📍 {datos_partido['campo']}</p>
+        <p>⏰ Hora de citación: {datos_partido['citacion']}</p>
     </div>
     """, unsafe_allow_html=True)
 
