@@ -325,3 +325,92 @@ if len(rango_fechas) == 2:
         st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
 else:
     st.info("Selecciona una fecha de inicio y otra de fin.")
+
+
+# =============================================================
+# COMUNICADOS
+# =============================================================
+
+import os
+
+st.divider()
+st.header("📢 Tablón de Comunicados (Padres y Entrenador)")
+
+# Cargar los mensajes existentes
+archivo_comunicados = "comunicados.csv"
+if os.path.exists(archivo_comunicados):
+    df_mensajes = pd.read_csv(archivo_comunicados)
+else:
+    df_mensajes = pd.DataFrame(columns=["Fecha", "Autor", "Rol", "Mensaje"])
+
+# Formulario para escribir un nuevo mensaje
+with st.form("nuevo_comunicado", clear_on_submit=True):
+    col_nombre, col_texto = st.columns([1, 3])
+    
+    with col_nombre:
+        if es_admin:
+            autor = st.text_input("Tu nombre:", value="Entrenador", disabled=True)
+            rol = "Entrenador"
+        else:
+            autor = st.text_input("Tu nombre (ej. Madre de Hugo):")
+            rol = "Familia"
+            
+    with col_texto:
+        mensaje = st.text_area("Escribe tu comunicado o consulta:", height=68)
+        
+    enviado = st.form_submit_button("📨 Publicar mensaje", type="primary")
+    
+    if enviado:
+        if autor.strip() == "" or mensaje.strip() == "":
+            st.warning("Por favor, escribe tu nombre y el mensaje antes de publicar.")
+        else:
+            ahora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            nueva_fila = pd.DataFrame([{
+                "Fecha": ahora,
+                "Autor": autor.strip(),
+                "Rol": rol,
+                "Mensaje": mensaje.strip()
+            }])
+            df_mensajes = pd.concat([nueva_fila, df_mensajes], ignore_index=True)
+            df_mensajes.to_csv(archivo_comunicados, index=False)
+            st.success("¡Mensaje publicado!")
+            st.rerun()
+
+# Mostrar el historial de mensajes (los más recientes arriba)
+st.subheader("Últimos mensajes")
+
+if df_mensajes.empty:
+    st.info("Aún no hay comunicados publicados.")
+else:
+    for indice, fila in df_mensajes.iterrows():
+        # Estilo destacado si lo escribe el entrenador
+        if fila["Rol"] == "Entrenador":
+            with st.container(border=True):
+                st.markdown(f"⚽ **{fila['Autor']} (Oficial)** · *{fila['Fecha']}*")
+                st.info(fila["Mensaje"])
+        else:
+            with st.container(border=True):
+                st.markdown(f"👤 **{fila['Autor']}** · *{fila['Fecha']}*")
+                st.write(fila["Mensaje"])
+
+# Herramientas de moderación solo para el entrenador
+if es_admin and not df_mensajes.empty:
+    with st.expander("🛠️ Opciones de Entrenador (Borrar o descargar mensajes)"):
+        opcion_borrar = st.selectbox(
+            "Selecciona un mensaje para eliminar:",
+            options=df_mensajes.index,
+            format_func=lambda x: f"{df_mensajes.loc[x, 'Fecha']} - {df_mensajes.loc[x, 'Autor']}: {df_mensajes.loc[x, 'Mensaje'][:40]}..."
+        )
+        if st.button("🗑️ Eliminar mensaje seleccionado"):
+            df_mensajes = df_mensajes.drop(opcion_borrar).reset_index(drop=True)
+            df_mensajes.to_csv(archivo_comunicados, index=False)
+            st.success("Mensaje eliminado.")
+            st.rerun()
+            
+        csv_chat = df_mensajes.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Descargar copia de seguridad del tablón",
+            data=csv_chat,
+            file_name="comunicados.csv",
+            mime="text/csv"
+        )
