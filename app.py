@@ -33,10 +33,6 @@ def borrar_en_github(ruta_repo, mensaje_commit):
     except Exception:
         pass
 
-def imagen_a_base64(ruta_imagen):
-    with open(ruta_imagen, "rb") as f:
-        return base64.b64encode(f.read()).decode()
-
 # ======================================
 # 1. CONFIGURACIÓN DE LA PÁGINA (SIEMPRE ARRIBA)
 # ======================================
@@ -65,22 +61,29 @@ st.markdown("""
 }
 .main-title {
     background-color: #172033;
-    padding: 35px 25px;
     border-radius: 15px;
     text-align: center;
     color: white;
     background-size: cover;
-    background-position: center;
+    background-position: center top;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 240px;
+    padding: 16px;
 }
 .main-title h1 {
     color: #ffcc00;
-    margin-bottom: 5px;
-    text-shadow: 2px 2px 6px rgba(0,0,0,0.8);
+    font-size: clamp(1.25rem, 4.5vw, 2rem);
+    margin-top: 0;
+    margin-bottom: 4px;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.95);
 }
 .main-title p {
     color: white;
-    text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
-    font-weight: 500;
+    font-size: clamp(0.78rem, 2.8vw, 0.95rem);
+    margin-bottom: 2px;
+    text-shadow: 1px 1px 5px rgba(0,0,0,0.95);
 }
 .match {
     background-color: #172033;
@@ -92,29 +95,31 @@ st.markdown("""
 .match h3 {
     color: #ffcc00;
 }
-.aviso-destacado {
+.aviso-portada {
     background-color: #fff8db;
     border-left: 6px solid #ffcc00;
-    border-top: 1px solid #f0e0a0;
-    border-right: 1px solid #f0e0a0;
-    border-bottom: 1px solid #f0e0a0;
-    padding: 16px 20px;
+    border-top: 1px solid #f0dfa0;
+    border-right: 1px solid #f0dfa0;
+    border-bottom: 1px solid #f0dfa0;
+    padding: 15px 18px;
     border-radius: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     color: #172033;
 }
-.aviso-destacado h4 {
+.aviso-portada h4 {
     margin: 0 0 6px 0;
     color: #172033;
-}
-.aviso-destacado p {
-    margin: 0 0 6px 0;
     font-size: 16px;
 }
-.aviso-destacado small {
-    color: #666666;
+.aviso-portada p {
+    margin: 0;
+    font-size: 15px;
 }
-/* Estilo visual para los botones de acceso rápido */
+.aviso-portada small {
+    color: #666666;
+    display: block;
+    margin-top: 6px;
+}
 div[data-testid="stButton"] > button[kind="secondary"] {
     background-color: white;
     border: 1px solid #d6d9e0;
@@ -193,60 +198,54 @@ st.sidebar.caption("Aplicación del equipo")
 # ======================================
 if opcion == "Inicio":
 
-    ruta_portada = None
-    for nombre_posible in ["equipo_portada.jpg", "equipo_portada.png", "equipo_portada.jpeg", "equipo.jpg", "equipo.png"]:
-        if os.path.exists(nombre_posible):
-            ruta_portada = nombre_posible
-            break
-
-    if es_admin:
-        with st.expander("🖼️ Cambiar foto de fondo del cartel principal"):
-            with st.form("form_foto_portada", clear_on_submit=True):
-                nueva_portada = st.file_uploader("Selecciona una foto horizontal del equipo:")
-                if st.form_submit_button("💾 Guardar foto de portada", type="primary"):
-                    if nueva_portada is not None:
-                        ext = os.path.splitext(nueva_portada.name)[1].lower()
-                        if ext in [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]:
-                            archivo_destino = "equipo_portada.jpg"
-                            with open(archivo_destino, "wb") as f:
-                                f.write(nueva_portada.getbuffer())
-                            guardar_en_github(archivo_destino, archivo_destino, "Actualiza foto de portada del equipo")
-                            st.success("¡Foto de portada actualizada!")
-                            st.rerun()
-                        else:
-                            st.warning("Por favor, selecciona un archivo de imagen válido.")
-                    else:
-                        st.warning("Selecciona primero una fotografía.")
-
-    if ruta_portada:
-        img_b64 = imagen_a_base64(ruta_portada)
-        estilo_banner = f'style="background-image: linear-gradient(rgba(23, 32, 51, 0.68), rgba(23, 32, 51, 0.80)), url(data:image/jpeg;base64,{img_b64});"'
-    else:
-        estilo_banner = ""
+    foto_portada = "equipo_portada.jpg"
+    estilo_fondo = ""
+    if os.path.exists(foto_portada):
+        with open(foto_portada, "rb") as img_f:
+            img_b64 = base64.b64encode(img_f.read()).decode()
+        estilo_fondo = (
+            f"background-image: linear-gradient(to bottom, rgba(23, 32, 51, 0.15) 0%, "
+            f"rgba(23, 32, 51, 0.45) 60%, rgba(23, 32, 51, 0.92) 100%), "
+            f"url('data:image/jpeg;base64,{img_b64}');"
+        )
 
     st.markdown(f"""
-    <div class="main-title" {estilo_banner}>
-        <h1>⚽ BENIAJÁN C.F.</h1>
+    <div class="main-title" style="{estilo_fondo}">
+        <h1>BENIAJÁN C.F.</h1>
         <p>Aplicación oficial de nuestro equipo - Infantil A</p>
-        <p>Temporada 2026/2027</p>
+        <p style="margin-bottom: 0;">Temporada 2026/2027</p>
     </div>
     """, unsafe_allow_html=True)
 
+    if es_admin:
+        with st.expander("🖼️ Cambiar foto de fondo del cartel principal"):
+            nueva_portada = st.file_uploader("Selecciona la foto del equipo (horizontal):", key="upload_portada")
+            if st.button("💾 Guardar foto de portada", type="primary"):
+                if nueva_portada is not None:
+                    with open(foto_portada, "wb") as f:
+                        f.write(nueva_portada.getbuffer())
+                    guardar_en_github(foto_portada, foto_portada, "Actualiza foto de portada del equipo")
+                    st.success("¡Foto de portada guardada!")
+                    st.rerun()
+                else:
+                    st.warning("Selecciona primero una imagen.")
+
     st.write("")
 
+    # --- BANNER DE ÚLTIMO COMUNICADO DESTACADO ---
     archivo_comunicados = "comunicados.csv"
-    num_comunicados = 0
+    num_mensajes = 0
     if os.path.exists(archivo_comunicados):
-        df_avisos = pd.read_csv(archivo_comunicados)
-        num_comunicados = len(df_avisos)
-        if not df_avisos.empty:
-            avisos_entrenador = df_avisos[df_avisos["Rol"] == "Entrenador"]
-            ultimo_aviso = avisos_entrenador.iloc[0] if not avisos_entrenador.empty else df_avisos.iloc[0]
+        df_com = pd.read_csv(archivo_comunicados)
+        num_mensajes = len(df_com)
+        if not df_com.empty:
+            df_entrenador = df_com[df_com["Rol"] == "Entrenador"]
+            ultimo = df_entrenador.iloc[0] if not df_entrenador.empty else df_com.iloc[0]
             st.markdown(f"""
-            <div class="aviso-destacado">
-                <h4>🔔 ÚLTIMO COMUNICADO ({ultimo_aviso['Autor']})</h4>
-                <p>{ultimo_aviso['Mensaje']}</p>
-                <small>📅 Publicado el {ultimo_aviso['Fecha']}</small>
+            <div class="aviso-portada">
+                <h4>🔔 ÚLTIMO COMUNICADO ({ultimo['Autor']})</h4>
+                <p>{ultimo['Mensaje']}</p>
+                <small>📅 Publicado el {ultimo['Fecha']}</small>
             </div>
             """, unsafe_allow_html=True)
 
@@ -299,18 +298,19 @@ if opcion == "Inicio":
     </div>
     """, unsafe_allow_html=True)
 
+    # --- CONTADORES DINÁMICOS PARA LOS BOTONES ---
     num_jugadores = 0
     if os.path.exists("plantilla.csv"):
         num_jugadores = len(pd.read_csv("plantilla.csv"))
 
     num_convocados = 0
-    num_pendientes = 0
+    pendientes_conv = 0
     if os.path.exists("convocatoria_actual.json"):
         with open("convocatoria_actual.json", "r", encoding="utf-8") as f:
-            conv_data = json.load(f)
-            lista_c = conv_data.get("convocados", [])
+            c_data = json.load(f)
+            lista_c = c_data.get("convocados", [])
             num_convocados = len(lista_c)
-            num_pendientes = sum(1 for c in lista_c if c.get("estado") == "⏳ Pendiente")
+            pendientes_conv = sum(1 for c in lista_c if c.get("estado") == "⏳ Pendiente")
 
     num_fotos = 0
     if os.path.exists("galeria_datos.json"):
@@ -322,7 +322,7 @@ if opcion == "Inicio":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**\n\nConsulta los jugadores del equipo" if num_jugadores > 0 else "👥 **Plantilla**\n\nConsulta los jugadores del equipo"
+        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**\n\nConsulta los jugadores del equipo"
         st.button(
             texto_plantilla,
             use_container_width=True,
@@ -339,11 +339,8 @@ if opcion == "Inicio":
         )
 
     with col3:
-        if num_convocados > 0:
-            aviso_pend = f" · {num_pendientes} sin confirmar" if num_pendientes > 0 else ""
-            texto_conv = f"📋 **Convocatorias ({num_convocados})** 🔔\n\nLista oficial{aviso_pend}"
-        else:
-            texto_conv = "📋 **Convocatorias**\n\nConsulta y confirma asistencia"
+        aviso_conv = f" · {pendientes_conv} sin confirmar" if pendientes_conv > 0 else ""
+        texto_conv = f"📋 **Convocatorias ({num_convocados})** 🔔\n\nConsulta y confirma asistencia{aviso_conv}" if num_convocados > 0 else "📋 **Convocatorias**\n\nConsulta y confirma asistencia"
         st.button(
             texto_conv,
             use_container_width=True,
@@ -354,7 +351,7 @@ if opcion == "Inicio":
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        texto_com = f"📢 **Comunicados ({num_comunicados})** 🔔\n\nNoticias y avisos del equipo" if num_comunicados > 0 else "📢 **Comunicados**\n\nNoticias y avisos del entrenador"
+        texto_com = f"📢 **Comunicados ({num_mensajes})**\n\nNoticias y avisos del entrenador"
         st.button(
             texto_com,
             use_container_width=True,
@@ -363,7 +360,7 @@ if opcion == "Inicio":
         )
 
     with col5:
-        texto_gal = f"📸 **Galería ({num_fotos})**\n\nFotos y recuerdos del equipo" if num_fotos > 0 else "📸 **Galería**\n\nFotos y recuerdos del equipo"
+        texto_gal = f"📸 **Galería ({num_fotos})**\n\nFotos y recuerdos del equipo"
         st.button(
             texto_gal,
             use_container_width=True,
@@ -801,7 +798,7 @@ elif opcion == "Galería":
     with st.expander("📤 Subir una nueva foto del equipo", expanded=False):
         with st.form("form_subir_foto", clear_on_submit=True):
             archivo_subido = st.file_uploader(
-                "Selecciona una imagen desde tu galería o cámara:"
+                "Selecciona una fotografía desde tu galería o cámara:"
             )
             titulo_foto = st.text_input(
                 "Título o jornada (ej. Victoria vs Murcia C.F. - Jornada 3):"
@@ -817,15 +814,13 @@ elif opcion == "Galería":
                 elif titulo_foto.strip() == "":
                     st.warning("Escribe un breve título para identificar la foto.")
                 else:
-                    extension = os.path.splitext(archivo_subido.name)[1].lower()
-                    extensiones_validas = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]
-                    if extension not in extensiones_validas:
-                        st.warning("Formato no admitido. Por favor, selecciona una imagen (JPG, PNG, WEBP o HEIC).")
+                    ext = os.path.splitext(archivo_subido.name)[1].lower()
+                    if ext not in [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]:
+                        st.warning("El archivo seleccionado no parece una imagen válida.")
                     else:
                         marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                        nombre_base = os.path.splitext(archivo_subido.name)[0]
-                        nombre_limpio = re.sub(r'[^a-zA-Z0-9_-]', '_', nombre_base)
-                        nombre_archivo = f"{marca_tiempo}_{nombre_limpio}{extension}"
+                        nombre_limpio = re.sub(r"[^a-zA-Z0-9_.-]", "_", archivo_subido.name)
+                        nombre_archivo = f"{marca_tiempo}_{nombre_limpio}"
                         ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
 
                         with open(ruta_guardado, "wb") as f:
