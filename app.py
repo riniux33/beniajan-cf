@@ -229,3 +229,99 @@ st.caption(
     "BENIAJÁN C.F. | Aplicación de gestión y comunicación "
     "| Versión inicial de prueba"
 )
+# ======================================
+# CALENDARIO
+# ======================================
+import pandas as pd
+import datetime
+
+st.divider()
+st.header("📅 Calendario y Entrenamientos (2026 - 2027)")
+
+# Control de acceso en la barra lateral
+st.sidebar.divider()
+st.sidebar.subheader("🔒 Acceso Cuerpo Técnico")
+clave_introducida = st.sidebar.text_input("Contraseña de edición:", type="password")
+
+# Comprobar si la contraseña coincide con la guardada en Secrets
+es_admin = False
+if clave_introducida:
+    if clave_introducida == st.secrets["password_entrenador"]:
+        es_admin = True
+        st.sidebar.success("Modo edición activado")
+    else:
+        st.sidebar.error("Contraseña incorrecta")
+
+# Cargar los datos del archivo CSV
+df = pd.read_csv("calendario.csv")
+df["Fecha"] = pd.to_datetime(df["Fecha"]).dt.date
+
+# Filtros interactivos
+col_filtro1, col_filtro2 = st.columns(2)
+
+with col_filtro1:
+    tipo_seleccionado = st.multiselect(
+        "Filtrar por actividad:",
+        options=["Entrenamiento", "Partido"],
+        default=["Entrenamiento", "Partido"]
+    )
+
+with col_filtro2:
+    rango_fechas = st.date_input(
+        "Selecciona rango de fechas:",
+        value=(datetime.date(2026, 8, 1), datetime.date(2027, 8, 31)),
+        min_value=datetime.date(2026, 8, 1),
+        max_value=datetime.date(2027, 8, 31)
+    )
+
+if len(rango_fechas) == 2:
+    inicio, fin = rango_fechas
+    mascara = (
+        (df["Tipo"].isin(tipo_seleccionado)) &
+        (df["Fecha"] >= inicio) &
+        (df["Fecha"] <= fin)
+    )
+    df_filtrado = df[mascara]
+
+    # Mostrar tabla editable SOLO si tienes la contraseña
+    if es_admin:
+        st.info("✏️ **Modo Entrenador:** Haz doble clic en cualquier celda para editar horas o añadir eventos.")
+        
+        df_editado = st.data_editor(
+            df_filtrado,
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Tipo": st.column_config.SelectboxColumn(
+                    "Tipo",
+                    options=["Entrenamiento", "Partido"],
+                    required=True
+                ),
+                "Hora": st.column_config.TextColumn(
+                    "Hora",
+                    help="Formato HH:MM (ej. 19:30)"
+                )
+            }
+        )
+
+        col_btn1, col_btn2 = st.columns(2)
+
+        with col_btn1:
+            if st.button("💾 Guardar cambios en la sesión", type="primary"):
+                df_editado.to_csv("calendario.csv", index=False)
+                st.success("Horarios actualizados.")
+
+        with col_btn2:
+            csv_descarga = df_editado.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Descargar CSV actualizado",
+                data=csv_descarga,
+                file_name="calendario.csv",
+                mime="text/csv"
+            )
+    else:
+        # Vista de solo lectura para jugadores y familias
+        st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
+else:
+    st.info("Selecciona una fecha de inicio y otra de fin.")
