@@ -228,11 +228,83 @@ if opcion == "Inicio":
         """, unsafe_allow_html=True)
 
 # ======================================
-# SECCIÓN: PLANTILLA
+# PLANTILLA
 # ======================================
 elif opcion == "Plantilla":
-    st.title("👥 Plantilla de jugadores")
-    st.info("Aquí incorporaremos las fichas de los jugadores.")
+    st.title("👥 Plantilla de jugadores - Infantil A")
+
+    archivo_plantilla = "plantilla.csv"
+    if os.path.exists(archivo_plantilla):
+        df_plantilla = pd.read_csv(archivo_plantilla)
+
+        # Resumen rápido en 4 tarjetas métricas
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1.metric("Total Jugadores", len(df_plantilla))
+        col_m2.metric("Disponibles", len(df_plantilla[df_plantilla["Estado"] == "Disponible"]))
+        col_m3.metric("Lesionados", len(df_plantilla[df_plantilla["Estado"] == "Lesionado"]))
+        col_m4.metric("Sancionados / Baja", len(df_plantilla[df_plantilla["Estado"] == "Sancionado"]))
+
+        st.divider()
+
+        # Filtro por posición
+        posiciones = ["Todas", "Portero", "Defensa", "Centrocampista", "Delantero"]
+        filtro_pos = st.selectbox("Filtrar por demarcación:", posiciones)
+
+        if filtro_pos != "Todas":
+            df_vista = df_plantilla[df_plantilla["Posicion"] == filtro_pos]
+        else:
+            df_vista = df_plantilla
+
+        # Modo edición si tienes la contraseña activada
+        if es_admin:
+            st.info("✏️ **Modo Entrenador:** Haz doble clic para cambiar nombres, dorsales, demarcación o estado.")
+            
+            df_plantilla_editada = st.data_editor(
+                df_plantilla,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Dorsal": st.column_config.NumberColumn("Dorsal", min_value=1, max_value=99, step=1),
+                    "Posicion": st.column_config.SelectboxColumn(
+                        "Demarcación",
+                        options=["Portero", "Defensa", "Centrocampista", "Delantero"],
+                        required=True
+                    ),
+                    "Estado": st.column_config.SelectboxColumn(
+                        "Estado",
+                        options=["Disponible", "Lesionado", "Sancionado"],
+                        required=True
+                    )
+                }
+            )
+
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                if st.button("💾 Guardar cambios de plantilla", type="primary"):
+                    df_plantilla_editada.to_csv(archivo_plantilla, index=False)
+                    st.success("Plantilla actualizada correctamente.")
+                    st.rerun()
+            with col_p2:
+                csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    label="📥 Descargar plantilla.csv",
+                    data=csv_plantilla,
+                    file_name="plantilla.csv",
+                    mime="text/csv"
+                )
+        else:
+            # Vista visual por tarjetas agrupadas para familias y jugadores
+            for _, jugador in df_vista.iterrows():
+                icono_estado = "🟢" if jugador["Estado"] == "Disponible" else ("🔴" if jugador["Estado"] == "Lesionado" else "🟡")
+                with st.container(border=True):
+                    c1, c2, c3 = st.columns([1, 4, 2])
+                    c1.markdown(f"### #{jugador['Dorsal']}")
+                    c2.markdown(f"**{jugador['Nombre']}**\n\n*{jugador['Posicion']}*")
+                    c3.markdown(f"{icono_estado} {jugador['Estado']}")
+    else:
+        st.warning("No se encontró el archivo plantilla.csv en el repositorio.")
+
 
 # ======================================
 # SECCIÓN: CALENDARIO
