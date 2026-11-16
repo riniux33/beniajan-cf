@@ -7,7 +7,7 @@ with col1:
 
 with col2:
     st.title("Beniaján C.F.")
-
+    st.subheader("⚽ Infantil A · Temporada 2026/2027")
 # ======================================
 # BENIAJÁN C.F. - APLICACIÓN OFICIAL
 # Primera versión visual
