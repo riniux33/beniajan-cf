@@ -6,7 +6,6 @@ import os
 import re
 from github import Github
 
-# Función para guardar archivos de forma permanente en GitHub
 def guardar_en_github(ruta_local, ruta_repo, mensaje_commit):
     try:
         if "github_token" in st.secrets:
@@ -32,14 +31,7 @@ def borrar_en_github(ruta_repo, mensaje_commit):
     except Exception:
         pass
 
-# ======================================
-# 1. CONFIGURACIÓN DE LA PÁGINA (SIEMPRE ARRIBA)
-# ======================================
-icono_app = "⚽"
-if os.path.exists("escudo.png.png"):
-    icono_app = "escudo.png.png"
-elif os.path.exists("escudo.png"):
-    icono_app = "escudo.png"
+icono_app = "escudo.png.png" if os.path.exists("escudo.png.png") else ("escudo.png" if os.path.exists("escudo.png") else "⚽")
 
 st.set_page_config(
     page_title="Beniaján C.F. - Infantil A",
@@ -47,16 +39,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# Inicializar la sección activa en memoria
 if "seccion_actual" not in st.session_state:
     st.session_state.seccion_actual = "Inicio"
 
 def ir_a(seccion):
     st.session_state.seccion_actual = seccion
 
-# ======================================
-# 2. DISEÑO VISUAL Y COLORES
-# ======================================
 st.markdown("""
 <style>
 .stApp {
@@ -86,7 +74,7 @@ st.markdown("""
 .match h3 {
     color: #ffcc00;
 }
-.notice-banner {
+.aviso-destacado {
     background-color: #fff8db;
     border-left: 6px solid #ffcc00;
     border-top: 1px solid #f0e0a0;
@@ -94,21 +82,22 @@ st.markdown("""
     border-bottom: 1px solid #f0e0a0;
     padding: 16px 20px;
     border-radius: 10px;
+    margin-top: 16px;
     margin-bottom: 18px;
     color: #172033;
 }
-.notice-banner h4 {
+.aviso-destacado h4 {
     margin: 0 0 6px 0;
     color: #172033;
+    font-size: 16px;
 }
-.notice-banner p {
-    margin: 0;
+.aviso-destacado p {
+    margin: 4px 0;
+    color: #2c3545;
     font-size: 15px;
 }
-.notice-meta {
-    font-size: 12px;
+.aviso-destacado small {
     color: #666666;
-    margin-top: 6px !important;
 }
 div[data-testid="stButton"] > button[kind="secondary"] {
     background-color: white;
@@ -129,9 +118,6 @@ div[data-testid="stButton"] > button[kind="secondary"]:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# ======================================
-# 3. ENCABEZADO SUPERIOR CON ESCUDO
-# ======================================
 col1, col2 = st.columns([1, 4])
 
 with col1:
@@ -146,9 +132,6 @@ with col2:
     st.title("Beniaján C.F.")
     st.subheader("⚽ Infantil A · Temporada 2026/2027")
 
-# ======================================
-# 4. MENÚ LATERAL Y CONTRASEÑA
-# ======================================
 st.sidebar.title("⚽ BENIAJÁN C.F.")
 st.sidebar.markdown("### Menú principal")
 
@@ -183,9 +166,6 @@ st.sidebar.divider()
 st.sidebar.caption("Temporada 2026/2027")
 st.sidebar.caption("Aplicación del equipo")
 
-# ======================================
-# PANTALLA DE INICIO
-# ======================================
 if opcion == "Inicio":
 
     st.markdown("""
@@ -196,64 +176,24 @@ if opcion == "Inicio":
     </div>
     """, unsafe_allow_html=True)
 
-    st.write("")
-
-    # Cargar contadores y último comunicado oficial para el banner
-    num_jugadores = 0
-    if os.path.exists("plantilla.csv"):
-        try:
-            df_pl_info = pd.read_csv("plantilla.csv")
-            num_jugadores = len(df_pl_info)
-        except Exception:
-            pass
-
-    num_convocados = 0
-    num_pendientes = 0
-    if os.path.exists("convocatoria_actual.json"):
-        try:
-            with open("convocatoria_actual.json", "r", encoding="utf-8") as f:
-                d_conv_info = json.load(f)
-                lista_c = d_conv_info.get("convocados", [])
-                num_convocados = len(lista_c)
-                num_pendientes = sum(1 for c in lista_c if c.get("estado") == "⏳ Pendiente")
-        except Exception:
-            pass
-
-    num_mensajes = 0
-    ultimo_aviso_oficial = None
     if os.path.exists("comunicados.csv"):
         try:
-            df_com_info = pd.read_csv("comunicados.csv")
-            num_mensajes = len(df_com_info)
-            if not df_com_info.empty:
-                oficiales = df_com_info[df_com_info["Rol"] == "Entrenador"]
-                if not oficiales.empty:
-                    ultimo_aviso_oficial = oficiales.iloc[0]
-                else:
-                    ultimo_aviso_oficial = df_com_info.iloc[0]
+            df_avisos = pd.read_csv("comunicados.csv")
+            if not df_avisos.empty:
+                avisos_entrenador = df_avisos[df_avisos["Rol"] == "Entrenador"]
+                ultimo = avisos_entrenador.iloc[0] if not avisos_entrenador.empty else df_avisos.iloc[0]
+                etiqueta_aviso = "📢 ÚLTIMO COMUNICADO OFICIAL" if ultimo["Rol"] == "Entrenador" else "💬 ÚLTIMO MENSAJE EN EL TABLÓN"
+                st.markdown(f"""
+                <div class="aviso-destacado">
+                    <h4>{etiqueta_aviso}</h4>
+                    <p>{ultimo["Mensaje"]}</p>
+                    <small>✍️ {ultimo["Autor"]} · 📅 {ultimo["Fecha"]}</small>
+                </div>
+                """, unsafe_allow_html=True)
         except Exception:
             pass
 
-    num_fotos = 0
-    if os.path.exists("galeria_datos.json"):
-        try:
-            with open("galeria_datos.json", "r", encoding="utf-8") as f:
-                num_fotos = len(json.load(f))
-        except Exception:
-            pass
-
-    # Banner destacado con el último comunicado
-    if ultimo_aviso_oficial is not None:
-        es_oficial = ultimo_aviso_oficial["Rol"] == "Entrenador"
-        etiqueta_banner = "🔔 ÚLTIMO AVISO DEL ENTRENADOR" if es_oficial else "💬 ÚLTIMO MENSAJE EN EL TABLÓN"
-        st.markdown(f"""
-        <div class="notice-banner">
-            <h4>{etiqueta_banner}</h4>
-            <p>{ultimo_aviso_oficial['Mensaje']}</p>
-            <p class="notice-meta">Publicado por <strong>{ultimo_aviso_oficial['Autor']}</strong> · {ultimo_aviso_oficial['Fecha']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
+    st.write("")
     st.subheader("Bienvenido a tu equipo")
     st.write(
         "Aquí encontrarás toda la información "
@@ -296,23 +236,53 @@ if opcion == "Inicio":
     st.markdown(f"""
     <div class="match">
         <h3>🏆 PRÓXIMO PARTIDO</h3>
-        <h2>{datos_partido['encuentro']}</h2>
-        <p>📅 {datos_partido['fecha_hora']}</p>
-        <p>📍 {datos_partido['campo']}</p>
-        <p>⏰ Hora de citación: {datos_partido['citacion']}</p>
+        <h2>{datos_partido["encuentro"]}</h2>
+        <p>📅 {datos_partido["fecha_hora"]}</p>
+        <p>📍 {datos_partido["campo"]}</p>
+        <p>⏰ Hora de citación: {datos_partido["citacion"]}</p>
     </div>
     """, unsafe_allow_html=True)
+
+    num_jugadores = 0
+    if os.path.exists("plantilla.csv"):
+        try:
+            num_jugadores = len(pd.read_csv("plantilla.csv"))
+        except Exception:
+            num_jugadores = 0
+
+    num_convocados = 0
+    num_pendientes = 0
+    if os.path.exists("convocatoria_actual.json"):
+        try:
+            with open("convocatoria_actual.json", "r", encoding="utf-8") as f:
+                c_data = json.load(f)
+                lista_c = c_data.get("convocados", [])
+                num_convocados = len(lista_c)
+                num_pendientes = sum(1 for c in lista_c if c.get("estado") == "⏳ Pendiente")
+        except Exception:
+            pass
+
+    num_mensajes = 0
+    if os.path.exists("comunicados.csv"):
+        try:
+            num_mensajes = len(pd.read_csv("comunicados.csv"))
+        except Exception:
+            num_mensajes = 0
+
+    num_fotos = 0
+    if os.path.exists("galeria_datos.json"):
+        try:
+            with open("galeria_datos.json", "r", encoding="utf-8") as f:
+                num_fotos = len(json.load(f))
+        except Exception:
+            num_fotos = 0
 
     st.subheader("Accesos rápidos")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**
-
-Consulta los jugadores del equipo" if num_jugadores > 0 else "👥 **Plantilla**
-
-Consulta los jugadores del equipo"
+        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**\n\nConsulta los jugadores del equipo" if num_jugadores > 0 else "👥 **Plantilla**\n\nConsulta los jugadores del equipo"
         st.button(
             texto_plantilla,
             use_container_width=True,
@@ -322,9 +292,7 @@ Consulta los jugadores del equipo"
 
     with col2:
         st.button(
-            "📅 **Calendario**
-
-Partidos y entrenamientos",
+            "📅 **Calendario**\n\nPartidos y entrenamientos",
             use_container_width=True,
             on_click=ir_a,
             args=("Calendario",)
@@ -332,14 +300,10 @@ Partidos y entrenamientos",
 
     with col3:
         if num_convocados > 0:
-            detalle_conv = f"{num_convocados} convocados ({num_pendientes} pendientes)" if num_pendientes > 0 else f"{num_convocados} convocados (Todo confirmado)"
-            texto_conv = f"📋 **Convocatorias 🔔**
-
-{detalle_conv}"
+            aviso_pend = f" · {num_pendientes} pendientes" if num_pendientes > 0 else ""
+            texto_conv = f"📋 **Convocatorias ({num_convocados}) 🔔**\n\nConfirmar asistencia{aviso_pend}"
         else:
-            texto_conv = "📋 **Convocatorias**
-
-Consulta y confirma asistencia"
+            texto_conv = "📋 **Convocatorias**\n\nConsulta y confirma asistencia"
         st.button(
             texto_conv,
             use_container_width=True,
@@ -350,11 +314,7 @@ Consulta y confirma asistencia"
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        texto_com = f"📢 **Comunicados ({num_mensajes})**
-
-Noticias y avisos del entrenador" if num_mensajes > 0 else "📢 **Comunicados**
-
-Noticias y avisos del entrenador"
+        texto_com = f"📢 **Comunicados ({num_mensajes}) 🔔**\n\nNoticias y avisos del entrenador" if num_mensajes > 0 else "📢 **Comunicados**\n\nNoticias y avisos del entrenador"
         st.button(
             texto_com,
             use_container_width=True,
@@ -363,11 +323,7 @@ Noticias y avisos del entrenador"
         )
 
     with col5:
-        texto_gal = f"📸 **Galería ({num_fotos} fotos)**
-
-Fotos y recuerdos del equipo" if num_fotos > 0 else "📸 **Galería**
-
-Fotos y recuerdos del equipo"
+        texto_gal = f"📸 **Galería ({num_fotos})**\n\nFotos y recuerdos del equipo" if num_fotos > 0 else "📸 **Galería**\n\nFotos y recuerdos del equipo"
         st.button(
             texto_gal,
             use_container_width=True,
@@ -377,16 +333,11 @@ Fotos y recuerdos del equipo"
 
     with col6:
         if st.button(
-            "🔒 **Cuerpo Técnico**
-
-Acceso edición en menú lateral",
+            "🔒 **Cuerpo Técnico**\n\nAcceso edición en menú lateral",
             use_container_width=True
         ):
             st.info("Pulsa la flecha **`>`** arriba a la izquierda para abrir el menú lateral e introducir la contraseña de entrenador.")
 
-# ======================================
-# PLANTILLA
-# ======================================
 elif opcion == "Plantilla":
     st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("👥 Plantilla de jugadores - Infantil A")
@@ -460,9 +411,6 @@ elif opcion == "Plantilla":
     else:
         st.warning("No se encontró el archivo plantilla.csv en el repositorio.")
 
-# ======================================
-# SECCIÓN: CALENDARIO
-# ======================================
 elif opcion == "Calendario":
     st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📅 Calendario deportivo (2026 - 2027)")
@@ -539,9 +487,6 @@ elif opcion == "Calendario":
     else:
         st.warning("No se encontró el archivo calendario.csv.")
 
-# ======================================
-# SECCIÓN: CONVOCATORIAS
-# ======================================
 elif opcion == "Convocatorias":
     st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📋 Convocatorias y Asistencia")
@@ -692,9 +637,6 @@ elif opcion == "Convocatorias":
                 col_j1.markdown(f"**{item['jugador']}**")
                 col_j2.markdown(f"{item['estado']}")
 
-# ======================================
-# SECCIÓN: COMUNICADOS
-# ======================================
 elif opcion == "Comunicados":
     st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📢 Tablón de Comunicados (Padres y Entrenador)")
@@ -786,9 +728,6 @@ elif opcion == "Comunicados":
                 mime="text/csv"
             )
 
-# ======================================
-# SECCIÓN: GALERÍA DE FOTOGRAFÍAS
-# ======================================
 elif opcion == "Galería":
     st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📸 Galería de fotografías - Infantil A")
@@ -807,7 +746,7 @@ elif opcion == "Galería":
     with st.expander("📤 Subir una nueva foto del equipo", expanded=False):
         with st.form("form_subir_foto", clear_on_submit=True):
             archivo_subido = st.file_uploader(
-                "Selecciona una imagen desde tu galería o archivos:"
+                "Selecciona una fotografía de tu galería (JPG, PNG, WEBP, HEIC):"
             )
             titulo_foto = st.text_input(
                 "Título o jornada (ej. Victoria vs Murcia C.F. - Jornada 3):"
@@ -826,11 +765,12 @@ elif opcion == "Galería":
                     ext = os.path.splitext(archivo_subido.name)[1].lower()
                     extensiones_validas = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]
                     if ext not in extensiones_validas:
-                        st.error("Formato no válido. Por favor, selecciona una imagen (JPG, PNG, WEBP o HEIC).")
+                        st.error("Formato no compatible. Por favor, selecciona una imagen (JPG, PNG, WEBP o HEIC).")
                     else:
                         marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                        nombre_limpio = re.sub(r'[^a-zA-Z0-9._-]', '_', archivo_subido.name)
-                        nombre_archivo = f"{marca_tiempo}_{nombre_limpio}"
+                        nombre_base = os.path.splitext(archivo_subido.name)[0]
+                        nombre_limpio = re.sub(r"[^a-zA-Z0-9_-]", "_", nombre_base)
+                        nombre_archivo = f"{marca_tiempo}_{nombre_limpio}{ext}"
                         ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
 
                         with open(ruta_guardado, "wb") as f:
@@ -897,9 +837,6 @@ elif opcion == "Galería":
                                 st.success("Foto eliminada.")
                                 st.rerun()
 
-# ======================================
-# PIE DE PÁGINA
-# ======================================
 st.divider()
 st.caption(
     "BENIAJÁN C.F. - Infantil A | Aplicación de gestión y comunicación "
