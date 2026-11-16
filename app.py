@@ -3,7 +3,7 @@ import streamlit as st
 col1, col2 = st.columns([1, 4])
 
 with col1:
-    st.image("escudo.png", width=100)
+    st.image("escudo.png.png", width=100)
 
 with col2:
     st.title("Beniaján C.F.")
