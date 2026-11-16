@@ -3,6 +3,25 @@ import pandas as pd
 import datetime
 import json
 import os
+from github import Github
+
+# Función para guardar archivos de forma permanente en GitHub
+def guardar_en_github(ruta_local, ruta_repo, mensaje_commit):
+    try:
+        if "github_token" in st.secrets:
+            g = Github(st.secrets["github_token"])
+            repo = g.get_repo("riniux33/beniajan-cf")
+            with open(ruta_local, "rb") as f:
+                contenido = f.read()
+            try:
+                # Si el archivo ya existe en GitHub, lo actualiza
+                archivo_existente = repo.get_contents(ruta_repo)
+                repo.update_file(ruta_repo, mensaje_commit, contenido, archivo_existente.sha)
+            except Exception:
+                # Si el archivo o carpeta (ej. galeria_fotos) es nuevo, lo crea
+                repo.create_file(ruta_repo, mensaje_commit, contenido)
+    except Exception as e:
+        st.error(f"Error al sincronizar con GitHub: {e}")
 
 # ======================================
 # 1. CONFIGURACIÓN DE LA PÁGINA (SIEMPRE ARRIBA)
