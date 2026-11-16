@@ -91,4 +91,3 @@ if len(rango_fechas) == 2:
         st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
 else:
     st.info("Selecciona una fecha de inicio y otra de fin.")
-
