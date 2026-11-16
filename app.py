@@ -1,3 +1,5 @@
+import streamlit as st
+
 col1, col2 = st.columns([1, 4])
 
 with col1:
@@ -5,8 +7,6 @@ with col1:
 
 with col2:
     st.title("Beniaján C.F.")
-
-import streamlit as st
 
 # ======================================
 # BENIAJÁN C.F. - APLICACIÓN OFICIAL
