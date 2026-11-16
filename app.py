@@ -95,7 +95,12 @@ st.markdown("""
 col1, col2 = st.columns([1, 4])
 
 with col1:
-    st.image("escudo.png.png", width=100)
+    if os.path.exists("escudo.png.png"):
+        st.image("escudo.png.png", width=100)
+    elif os.path.exists("escudo.png"):
+        st.image("escudo.png", width=100)
+    else:
+        st.markdown("# ⚽")
 
 with col2:
     st.title("Beniaján C.F.")
@@ -174,7 +179,7 @@ if opcion == "Inicio":
                 nueva_fecha = st.text_input("Día y hora:", value=datos_partido["fecha_hora"])
                 nuevo_campo = st.text_input("Campo:", value=datos_partido["campo"])
                 nueva_citacion = st.text_input("Hora de citación:", value=datos_partido["citacion"])
-                
+
                 if st.form_submit_button("💾 Actualizar cartel", type="primary"):
                     datos_partido = {
                         "encuentro": nuevo_encuentro,
@@ -280,7 +285,7 @@ elif opcion == "Plantilla":
 
         if es_admin:
             st.info("✏️ **Modo Entrenador:** Haz doble clic para cambiar nombres, dorsales, demarcación o estado.")
-            
+
             df_plantilla_editada = st.data_editor(
                 df_plantilla,
                 num_rows="dynamic",
@@ -307,10 +312,10 @@ elif opcion == "Plantilla":
                     df_plantilla_editada.to_csv(archivo_plantilla, index=False)
                     guardar_en_github(archivo_plantilla, archivo_plantilla, "Actualiza plantilla")
                     st.success("Plantilla guardada permanentemente.")
-                    st.rerun()
-            with col_p2:
-                csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
-                st.download_button(
+st.rerun()
+with col_p2:
+csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
+st.download_button(
 label="📥 Descargar plantilla.csv",
 data=csv_plantilla,
 file_name="plantilla.csv",
@@ -363,9 +368,9 @@ mascara = (
 )
 df_filtrado = df[mascara]
 if es_admin:
-st.info("✏️ Modo Entrenador: Haz doble clic en cualquier celda para editar horas o añadir eventos.")
+st.info("✏️ Modo Entrenador: Editando la tabla completa para evitar pérdida de eventos fuera del filtro.")
 df_editado = st.data_editor(
-df_filtrado,
+df,
 num_rows="dynamic",
 use_container_width=True,
 hide_index=True,
@@ -387,6 +392,7 @@ if st.button("💾 Guardar cambios de calendario", type="primary"):
 df_editado.to_csv("calendario.csv", index=False)
 guardar_en_github("calendario.csv", "calendario.csv", "Actualiza calendario")
 st.success("Horarios guardados permanentemente.")
+st.rerun()
 with col_btn2:
 csv_descarga = df_editado.to_csv(index=False).encode("utf-8")
 st.download_button(
@@ -566,7 +572,7 @@ with st.expander("🛠️ Opciones de Entrenador (Borrar o descargar mensajes)")
 opcion_borrar = st.selectbox(
 "Selecciona un mensaje para eliminar:",
 options=df_mensajes.index,
-format_func=lambda x: f"{df_mensajes.loc[x, 'Fecha']} - {df_mensajes.loc[x, 'Autor']}: {df_mensajes.loc[x, 'Mensaje'][:40]}..."
+format_func=lambda x: f"{df_mensajes.loc[x, 'Fecha']} - {df_mensajes.loc[x, 'Autor']}: {str(df_mensajes.loc[x, 'Mensaje'])[:40]}..."
 )
 if st.button("🗑️ Eliminar mensaje seleccionado"):
 df_mensajes = df_mensajes.drop(opcion_borrar).reset_index(drop=True)
@@ -639,7 +645,7 @@ ruta_img = os.path.join(carpeta_fotos, foto["archivo"])
 if os.path.exists(ruta_img):
 with columnas[indice % 3]:
 with st.container(border=True):
-st.image(ruta_img, use_container_width=True)
+st.image(ruta_img)
 st.markdown(f"{foto['titulo']}")
 st.caption(f"📷 {foto['autor']} · 📅 {foto['fecha']}")
 if es_admin:
@@ -667,6 +673,42 @@ st.caption(
 "BENIAJÁN C.F. - Infantil A | Aplicación de gestión y comunicación "
 "| Temporada 2026/2027"
 )
-      
+
+  
+            
+
+                        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
