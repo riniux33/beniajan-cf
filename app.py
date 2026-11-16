@@ -313,8 +313,7 @@ elif opcion == "Plantilla":
                     guardar_en_github(archivo_plantilla, archivo_plantilla, "Actualiza plantilla")
                     st.success("Plantilla guardada permanentemente.")
                     st.rerun()
-
-with col_p2:
+ith col_p2:
 csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
 st.download_button(
 label="📥 Descargar plantilla.csv",
@@ -528,6 +527,168 @@ df_mensajes = pd.read_csv(archivo_comunicados)
 else:
 df_mensajes = pd.DataFrame(columns=["Fecha", "Autor", "Rol", "Mensaje"])
 with st.form("nuevo_comunicado", clear_on_submit=True):
+col_nombre, col_texto = st.columns([1, 3])
+with col_nombre:
+if es_admin:
+autor = st.text_input("Tu nombre:", value="Entrenador", disabled=True)
+rol = "Entrenador"
+else:
+autor = st.text_input("Tu nombre (ej. Madre de Hugo):")
+rol = "Familia"
+with col_texto:
+mensaje = st.text_area("Escribe tu comunicado o consulta:", height=68)
+enviado = st.form_submit_button("📨 Publicar mensaje", type="primary")
+if enviado:
+if autor.strip() == "" or mensaje.strip() == "":
+st.warning("Por favor, escribe tu nombre y el mensaje antes de publicar.")
+else:
+ahora = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+nueva_fila = pd.DataFrame([{
+"Fecha": ahora,
+"Autor": autor.strip(),
+"Rol": rol,
+"Mensaje": mensaje.strip()
+}])
+df_mensajes = pd.concat([nueva_fila, df_mensajes], ignore_index=True)
+df_mensajes.to_csv(archivo_comunicados, index=False)
+guardar_en_github(archivo_comunicados, archivo_comunicados, f"Nuevo comunicado de {autor.strip()}")
+st.success("¡Mensaje publicado y guardado!")
+st.rerun()
+st.subheader("Últimos mensajes")
+if df_mensajes.empty:
+st.info("Aún no hay comunicados publicados.")
+else:
+for indice, fila in df_mensajes.iterrows():
+if fila["Rol"] == "Entrenador":
+with st.container(border=True):
+st.markdown(f"⚽ {fila['Autor']} (Oficial) · {fila['Fecha']}")
+st.info(fila["Mensaje"])
+else:
+with st.container(border=True):
+st.markdown(f"👤 {fila['Autor']} · {fila['Fecha']}")
+st.write(fila["Mensaje"])
+if es_admin and not df_mensajes.empty:
+with st.expander("🛠️ Opciones de Entrenador (Borrar o descargar mensajes)"):
+opcion_borrar = st.selectbox(
+"Selecciona un mensaje para eliminar:",
+options=df_mensajes.index,
+format_func=lambda x: f"{df_mensajes.loc[x, 'Fecha']} - {df_mensajes.loc[x, 'Autor']}: {str(df_mensajes.loc[x, 'Mensaje'])[:40]}..."
+)
+if st.button("🗑️ Eliminar mensaje seleccionado"):
+df_mensajes = df_mensajes.drop(opcion_borrar).reset_index(drop=True)
+df_mensajes.to_csv(archivo_comunicados, index=False)
+guardar_en_github(archivo_comunicados, archivo_comunicados, "Elimina mensaje en tablón")
+st.success("Mensaje eliminado.")
+st.rerun()
+csv_chat = df_mensajes.to_csv(index=False).encode("utf-8")
+st.download_button(
+label="📥 Descargar copia de seguridad del tablón",
+data=csv_chat,
+file_name="comunicados.csv",
+mime="text/csv"
+)
+
+======================================
+
+
+SECCIÓN: GALERÍA DE FOTOGRAFÍAS
+
+
+======================================
+
+elif opcion == "Galería":
+st.title("📸 Galería de fotografías - Infantil A")
+carpeta_fotos = "galeria_fotos"
+archivo_registro = "galeria_datos.json"
+if not os.path.exists(carpeta_fotos):
+os.makedirs(carpeta_fotos)
+lista_fotos = []
+if os.path.exists(archivo_registro):
+with open(archivo_registro, "r", encoding="utf-8") as f:
+lista_fotos = json.load(f)
+with st.expander("📤 Subir una nueva foto del equipo", expanded=False):
+with st.form("form_subir_foto", clear_on_submit=True):
+archivo_subido = st.file_uploader("Selecciona una imagen (JPG o PNG):", type=["jpg", "jpeg", "png"])
+titulo_foto = st.text_input("Título o jornada (ej. Victoria vs Murcia C.F. - Jornada 3):")
+autor_foto = st.text_input("Subida por:", value="Entrenador" if es_admin else "")
+if st.form_submit_button("🖼️ Publicar en la galería", type="primary"):
+if archivo_subido is None:
+st.warning("Por favor, selecciona primero una fotografía.")
+elif titulo_foto.strip() == "":
+st.warning("Escribe un breve título para identificar la foto.")
+else:
+marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+nombre_archivo = f"{marca_tiempo}_{archivo_subido.name}"
+ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
+with open(ruta_guardado, "wb") as f:
+f.write(archivo_subido.getbuffer())
+nueva_foto = {
+"archivo": nombre_archivo,
+"titulo": titulo_foto.strip(),
+"autor": autor_foto.strip() if autor_foto.strip() else "Familia Beniaján",
+"fecha": datetime.datetime.now().strftime("%d/%m/%Y")
+}
+lista_fotos.insert(0, nueva_foto)
+with open(archivo_registro, "w", encoding="utf-8") as f:
+json.dump(lista_fotos, f, ensure_ascii=False, indent=4)
+guardar_en_github(ruta_guardado, f"galeria_fotos/{nombre_archivo}", f"Nueva foto: {titulo_foto.strip()}")
+guardar_en_github(archivo_registro, archivo_registro, "Actualiza índice de galería")
+st.success("¡Fotografía subida y guardada permanentemente!")
+st.rerun()
+st.divider()
+if not lista_fotos:
+st.info("Aún no hay fotografías en el álbum. ¡Sé el primero en subir una desde el botón de arriba!")
+else:
+columnas = st.columns(3)
+for indice, foto in enumerate(lista_fotos):
+ruta_img = os.path.join(carpeta_fotos, foto["archivo"])
+if os.path.exists(ruta_img):
+with columnas[indice % 3]:
+with st.container(border=True):
+st.image(ruta_img)
+st.markdown(f"{foto['titulo']}")
+st.caption(f"📷 {foto['autor']} · 📅 {foto['fecha']}")
+if es_admin:
+if st.button("🗑️ Eliminar", key=f"del_foto_{indice}"):
+if os.path.exists(ruta_img):
+os.remove(ruta_img)
+borrar_en_github(f"galeria_fotos/{foto['archivo']}", f"Elimina foto: {foto['titulo']}")
+lista_fotos.pop(indice)
+with open(archivo_registro, "w", encoding="utf-8") as f:
+json.dump(lista_fotos, f, ensure_ascii=False, indent=4)
+guardar_en_github(archivo_registro, archivo_registro, "Actualiza índice tras borrar foto")
+st.success("Foto eliminada.")
+st.rerun()
+
+======================================
+
+
+PIE DE PÁGINA
+
+
+======================================
+
+st.divider()
+st.caption(
+"BENIAJÁN C.F. - Infantil A | Aplicación de gestión y comunicación "
+"| Temporada 2026/2027"
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 col_nombre, col_texto = st.columns([1, 3])
 with col_nombre:
 if es_admin:
