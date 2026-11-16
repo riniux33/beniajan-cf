@@ -3,6 +3,7 @@ import pandas as pd
 import datetime
 import json
 import os
+import re
 from github import Github
 
 # Función para guardar archivos de forma permanente en GitHub
@@ -34,11 +35,24 @@ def borrar_en_github(ruta_repo, mensaje_commit):
 # ======================================
 # 1. CONFIGURACIÓN DE LA PÁGINA (SIEMPRE ARRIBA)
 # ======================================
+if os.path.exists("escudo.png.png"):
+    icono_app = "escudo.png.png"
+elif os.path.exists("escudo.png"):
+    icono_app = "escudo.png"
+else:
+    icono_app = "⚽"
+
 st.set_page_config(
     page_title="Beniaján C.F. - Infantil A",
-    page_icon="⚽",
+    page_icon=icono_app,
     layout="wide"
 )
+
+if "seccion_actual" not in st.session_state:
+    st.session_state.seccion_actual = "Inicio"
+
+def ir_a(seccion):
+    st.session_state.seccion_actual = seccion
 
 # ======================================
 # 2. DISEÑO VISUAL Y COLORES
@@ -62,20 +76,6 @@ st.markdown("""
 .main-title p {
     color: white;
 }
-.card {
-    background-color: white;
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid #e0e0e0;
-    min-height: 130px;
-    margin-bottom: 12px;
-}
-.card h3 {
-    color: #172033;
-}
-.card p {
-    color: #555555;
-}
 .match {
     background-color: #172033;
     padding: 20px;
@@ -85,6 +85,22 @@ st.markdown("""
 }
 .match h3 {
     color: #ffcc00;
+}
+div[data-testid="stButton"] > button[kind="secondary"] {
+    background-color: white;
+    border: 1px solid #d6d9e0;
+    border-radius: 12px;
+    padding: 22px 16px;
+    min-height: 110px;
+    color: #172033;
+    font-size: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+}
+div[data-testid="stButton"] > button[kind="secondary"]:hover {
+    border-color: #172033;
+    background-color: #eef1f6;
+    transform: translateY(-2px);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -112,16 +128,19 @@ with col2:
 st.sidebar.title("⚽ BENIAJÁN C.F.")
 st.sidebar.markdown("### Menú principal")
 
+secciones = [
+    "Inicio",
+    "Plantilla",
+    "Calendario",
+    "Convocatorias",
+    "Comunicados",
+    "Galería"
+]
+
 opcion = st.sidebar.radio(
     "Selecciona una sección:",
-    [
-        "Inicio",
-        "Plantilla",
-        "Calendario",
-        "Convocatorias",
-        "Comunicados",
-        "Galería"
-    ]
+    secciones,
+    key="seccion_actual"
 )
 
 st.sidebar.divider()
@@ -208,59 +227,59 @@ if opcion == "Inicio":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.markdown("""
-        <div class="card">
-            <h3>👥 Plantilla</h3>
-            <p>Consulta los jugadores del equipo.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.button(
+            "👥 **Plantilla**\n\nConsulta los jugadores del equipo",
+            use_container_width=True,
+            on_click=ir_a,
+            args=("Plantilla",)
+        )
 
     with col2:
-        st.markdown("""
-        <div class="card">
-            <h3>📅 Calendario</h3>
-            <p>Partidos y entrenamientos.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.button(
+            "📅 **Calendario**\n\nPartidos y entrenamientos",
+            use_container_width=True,
+            on_click=ir_a,
+            args=("Calendario",)
+        )
 
     with col3:
-        st.markdown("""
-        <div class="card">
-            <h3>📋 Convocatorias</h3>
-            <p>Consulta las convocatorias.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.button(
+            "📋 **Convocatorias**\n\nConsulta y confirma asistencia",
+            use_container_width=True,
+            on_click=ir_a,
+            args=("Convocatorias",)
+        )
 
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        st.markdown("""
-        <div class="card">
-            <h3>📢 Comunicados</h3>
-            <p>Noticias y avisos del entrenador.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.button(
+            "📢 **Comunicados**\n\nNoticias y avisos del entrenador",
+            use_container_width=True,
+            on_click=ir_a,
+            args=("Comunicados",)
+        )
 
     with col5:
-        st.markdown("""
-        <div class="card">
-            <h3>📸 Galería</h3>
-            <p>Fotos y vídeos del equipo.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.button(
+            "📸 **Galería**\n\nFotos y recuerdos del equipo",
+            use_container_width=True,
+            on_click=ir_a,
+            args=("Galería",)
+        )
 
     with col6:
-        st.markdown("""
-        <div class="card">
-            <h3>⚙️ Administración</h3>
-            <p>Gestión del equipo.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        if st.button(
+            "🔒 **Cuerpo Técnico**\n\nAcceso edición en menú lateral",
+            use_container_width=True
+        ):
+            st.info("Pulsa la flecha **`>`** arriba a la izquierda para abrir el menú lateral e introducir la contraseña de entrenador.")
 
 # ======================================
 # PLANTILLA
 # ======================================
 elif opcion == "Plantilla":
+    st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("👥 Plantilla de jugadores - Infantil A")
 
     archivo_plantilla = "plantilla.csv"
@@ -336,6 +355,7 @@ elif opcion == "Plantilla":
 # SECCIÓN: CALENDARIO
 # ======================================
 elif opcion == "Calendario":
+    st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📅 Calendario deportivo (2026 - 2027)")
 
     if os.path.exists("calendario.csv"):
@@ -414,6 +434,7 @@ elif opcion == "Calendario":
 # SECCIÓN: CONVOCATORIAS
 # ======================================
 elif opcion == "Convocatorias":
+    st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📋 Convocatorias y Asistencia")
 
     archivo_conv = "convocatoria_actual.json"
@@ -566,6 +587,7 @@ elif opcion == "Convocatorias":
 # SECCIÓN: COMUNICADOS
 # ======================================
 elif opcion == "Comunicados":
+    st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📢 Tablón de Comunicados (Padres y Entrenador)")
 
     archivo_comunicados = "comunicados.csv"
@@ -659,6 +681,7 @@ elif opcion == "Comunicados":
 # SECCIÓN: GALERÍA DE FOTOGRAFÍAS
 # ======================================
 elif opcion == "Galería":
+    st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📸 Galería de fotografías - Infantil A")
 
     carpeta_fotos = "galeria_fotos"
@@ -674,9 +697,9 @@ elif opcion == "Galería":
 
     with st.expander("📤 Subir una nueva foto del equipo", expanded=False):
         with st.form("form_subir_foto", clear_on_submit=True):
+            # Sin filtro restrictivo 'type' para evitar bloqueos con HEIC, WEBP o formatos de cámara móvil
             archivo_subido = st.file_uploader(
-                "Selecciona una imagen (JPG o PNG):",
-                type=["jpg", "jpeg", "png"]
+                "Selecciona una fotografía de tu galería o cámara:"
             )
             titulo_foto = st.text_input(
                 "Título o jornada (ej. Victoria vs Murcia C.F. - Jornada 3):"
@@ -692,36 +715,42 @@ elif opcion == "Galería":
                 elif titulo_foto.strip() == "":
                     st.warning("Escribe un breve título para identificar la foto.")
                 else:
-                    marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                    nombre_archivo = f"{marca_tiempo}_{archivo_subido.name}"
-                    ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
+                    extension = os.path.splitext(archivo_subido.name)[1].lower()
+                    if extension not in [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]:
+                        st.error("Formato no válido. Por favor, sube una imagen (JPG, PNG, WEBP o HEIC).")
+                    else:
+                        marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                        # Limpiar nombre de archivo para evitar espacios o caracteres raros del móvil
+                        nombre_limpio = re.sub(r'[^a-zA-Z0-9._-]', '_', archivo_subido.name)
+                        nombre_archivo = f"{marca_tiempo}_{nombre_limpio}"
+                        ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
 
-                    with open(ruta_guardado, "wb") as f:
-                        f.write(archivo_subido.getbuffer())
+                        with open(ruta_guardado, "wb") as f:
+                            f.write(archivo_subido.getbuffer())
 
-                    nueva_foto = {
-                        "archivo": nombre_archivo,
-                        "titulo": titulo_foto.strip(),
-                        "autor": autor_foto.strip() if autor_foto.strip() else "Familia Beniaján",
-                        "fecha": datetime.datetime.now().strftime("%d/%m/%Y")
-                    }
-                    lista_fotos.insert(0, nueva_foto)
+                        nueva_foto = {
+                            "archivo": nombre_archivo,
+                            "titulo": titulo_foto.strip(),
+                            "autor": autor_foto.strip() if autor_foto.strip() else "Familia Beniaján",
+                            "fecha": datetime.datetime.now().strftime("%d/%m/%Y")
+                        }
+                        lista_fotos.insert(0, nueva_foto)
 
-                    with open(archivo_registro, "w", encoding="utf-8") as f:
-                        json.dump(lista_fotos, f, ensure_ascii=False, indent=4)
+                        with open(archivo_registro, "w", encoding="utf-8") as f:
+                            json.dump(lista_fotos, f, ensure_ascii=False, indent=4)
 
-                    guardar_en_github(
-                        ruta_guardado,
-                        f"galeria_fotos/{nombre_archivo}",
-                        f"Nueva foto: {titulo_foto.strip()}"
-                    )
-                    guardar_en_github(
-                        archivo_registro,
-                        archivo_registro,
-                        "Actualiza índice de galería"
-                    )
-                    st.success("¡Fotografía subida y guardada permanentemente!")
-                    st.rerun()
+                        guardar_en_github(
+                            ruta_guardado,
+                            f"galeria_fotos/{nombre_archivo}",
+                            f"Nueva foto: {titulo_foto.strip()}"
+                        )
+                        guardar_en_github(
+                            archivo_registro,
+                            archivo_registro,
+                            "Actualiza índice de galería"
+                        )
+                        st.success("¡Fotografía subida y guardada permanentemente!")
+                        st.rerun()
 
     st.divider()
 
