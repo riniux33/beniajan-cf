@@ -313,7 +313,7 @@ elif opcion == "Plantilla":
                     guardar_en_github(archivo_plantilla, archivo_plantilla, "Actualiza plantilla")
                     st.success("Plantilla guardada permanentemente.")
                     st.rerun()
-ith col_p2:
+with col_p2:
 csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
 st.download_button(
 label="📥 Descargar plantilla.csv",
