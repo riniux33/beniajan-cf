@@ -389,8 +389,124 @@ elif opcion == "Calendario":
 # SECCIÓN: CONVOCATORIAS
 # ======================================
 elif opcion == "Convocatorias":
-    st.title("📋 Convocatorias")
-    st.info("Aquí crearemos el sistema de confirmación de asistencia.")
+    st.title("📋 Convocatorias y Asistencia")
+
+    archivo_conv = "convocatoria_actual.json"
+    archivo_plantilla = "plantilla.csv"
+
+    # Cargar datos de convocatoria si ya existe
+    datos_conv = {
+        "partido": "Próximo Partido Oficial",
+        "notas": "Traer primera equipación (verde) y botella de agua.",
+        "convocados": []
+    }
+    if os.path.exists(archivo_conv):
+        with open(archivo_conv, "r", encoding="utf-8") as f:
+            datos_conv = json.load(f)
+
+    # ==========================================
+    # PANEL DEL ENTRENADOR (SELECCIÓN DE LISTA)
+    # ==========================================
+    if es_admin:
+        with st.expander("✏️ Configurar nueva convocatoria (Solo Entrenador)", expanded=True):
+            if os.path.exists(archivo_plantilla):
+                df_pl = pd.read_csv(archivo_plantilla)
+                # Filtrar solo los jugadores disponibles
+                df_disp = df_pl[df_pl["Estado"] == "Disponible"]
+                opciones_jugadores = [
+                    f"#{fila['Dorsal']} - {fila['Nombre']} ({fila['Posicion']})"
+                    for _, fila in df_disp.iterrows()
+                ]
+
+                # Recuperar los ya marcados previamente si siguen disponibles
+                nombres_previos = [c["jugador"] for c in datos_conv["convocados"] if c["jugador"] in opciones_jugadores]
+
+                with st.form("form_convocatoria"):
+                    titulo_partido = st.text_input("Título del partido / Jornada:", value=datos_conv["partido"])
+                    notas_partido = st.text_area("Indicaciones (equipación, punto de encuentro...):", value=datos_conv["notas"])
+                    seleccionados = st.multiselect(
+                        f"Selecciona los jugadores convocados ({len(opciones_jugadores)} disponibles):",
+                        options=opciones_jugadores,
+                        default=nombres_previos
+                    )
+
+                    if st.form_submit_button("📢 Publicar Convocatoria Oficial", type="primary"):
+                        # Conservar el estado de confirmación si el jugador ya estaba en la lista
+                        estados_previos = {c["jugador"]: c["estado"] for c in datos_conv["convocados"]}
+                        nueva_lista = []
+                        for jug in seleccionados:
+                            nueva_lista.append({
+                                "jugador": jug,
+                                "estado": estados_previos.get(jug, "⏳ Pendiente")
+                            })
+
+                        datos_conv = {
+                            "partido": titulo_partido,
+                            "notas": notas_partido,
+                            "convocados": nueva_lista
+                        }
+                        with open(archivo_conv, "w", encoding="utf-8") as f:
+                            json.dump(datos_conv, f, ensure_ascii=False, indent=4)
+                        st.success("¡Convocatoria publicada correctamente!")
+                        st.rerun()
+            else:
+                st.warning("Primero debes crear el archivo plantilla.csv para elegir jugadores.")
+
+    # ==========================================
+    # VISTA PÚBLICA Y CONFIRMACIÓN DE FAMILIAS
+    # ==========================================
+    if not datos_conv["convocados"]:
+        st.info("Todavía no se ha publicado la convocatoria para el próximo partido.")
+    else:
+        st.subheader(f"🏆 {datos_conv['partido']}")
+        st.info(f"📌 **Notas del cuerpo técnico:** {datos_conv['notas']}")
+
+        # Contadores de asistencia
+        total_conv = len(datos_conv["convocados"])
+        confirmados = sum(1 for c in datos_conv["convocados"] if c["estado"] == "✅ Confirmado")
+        pendientes = sum(1 for c in datos_conv["convocados"] if c["estado"] == "⏳ Pendiente")
+        bajas = sum(1 for c in datos_conv["convocados"] if c["estado"] == "❌ No puede asistir")
+
+        c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+        c_m1.metric("Convocados", total_conv)
+        c_m2.metric("Confirmados", confirmados)
+        c_m3.metric("Pendientes", pendientes)
+        c_m4.metric("Bajas avisadas", bajas)
+
+        st.divider()
+
+        # Formulario rápido para que padres/jugadores confirmen
+        with st.container(border=True):
+            st.markdown("### 🙋‍♂️ Confirmar asistencia del jugador")
+            lista_nombres = [c["jugador"] for c in datos_conv["convocados"]]
+            
+            col_sel1, col_sel2, col_sel3 = st.columns([2, 2, 1])
+            with col_sel1:
+                jugador_elegido = st.selectbox("Selecciona el jugador:", options=lista_nombres)
+            with col_sel2:
+                nuevo_estado = st.selectbox(
+                    "Respuesta:",
+                    options=["✅ Confirmado", "❌ No puede asistir", "⏳ Pendiente"]
+                )
+            with col_sel3:
+                st.write("")
+                st.write("")
+                if st.button("Guardar respuesta", type="primary"):
+                    for item in datos_conv["convocados"]:
+                        if item["jugador"] == jugador_elegido:
+                            item["estado"] = nuevo_estado
+                    with open(archivo_conv, "w", encoding="utf-8") as f:
+                        json.dump(datos_conv, f, ensure_ascii=False, indent=4)
+                    st.success(f"Estado actualizado para {jugador_elegido}")
+                    st.rerun()
+
+        # Listado visual de todos los convocados y su estado
+        st.subheader("Lista oficial de convocados")
+        for item in datos_conv["convocados"]:
+            with st.container(border=True):
+                col_j1, col_j2 = st.columns([3, 1])
+                col_j1.markdown(f"**{item['jugador']}**")
+                col_j2.markdown(f"**{item['estado']}**")
 
 # ======================================
 # SECCIÓN: COMUNICADOS
