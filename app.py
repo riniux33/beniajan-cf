@@ -588,4 +588,86 @@ elif opcion == "Comunicados":
                 file_name="comunicados.csv",
                 mime="text/csv"
             )
+elif opcion == "Galería":
+    st.title("📸 Galería de fotografías - Infantil A")
+
+    carpeta_fotos = "galeria_fotos"
+    archivo_registro = "galeria_datos.json"
+
+    # Crear carpeta para guardar las imágenes si no existe
+    if not os.path.exists(carpeta_fotos):
+        os.makedirs(carpeta_fotos)
+
+    # Cargar registro de títulos y autores de las fotos
+    lista_fotos = []
+    if os.path.exists(archivo_registro):
+        with open(archivo_registro, "r", encoding="utf-8") as f:
+            lista_fotos = json.load(f)
+
+    # ==========================================
+    # SUBIDA DE NUEVAS FOTOS (PADRES Y ENTRENADOR)
+    # ==========================================
+    with st.expander("📤 Subir una nueva foto del equipo", expanded=False):
+        with st.form("form_subir_foto", clear_on_submit=True):
+            archivo_subido = st.file_uploader("Selecciona una imagen (JPG o PNG):", type=["jpg", "jpeg", "png"])
+            titulo_foto = st.text_input("Título o jornada (ej. Victoria vs Murcia C.F. - Jornada 3):")
+            autor_foto = st.text_input("Subida por:", value="Entrenador" if es_admin else "")
+
+            if st.form_submit_button("🖼️ Publicar en la galería", type="primary"):
+                if archivo_subido is None:
+                    st.warning("Por favor, selecciona primero una fotografía.")
+                elif titulo_foto.strip() == "":
+                    st.warning("Escribe un breve título para identificar la foto.")
+                else:
+                    # Generar nombre único con fecha y hora para no sobrescribir
+                    marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                    nombre_archivo = f"{marca_tiempo}_{archivo_subido.name}"
+                    ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
+
+                    with open(ruta_guardado, "wb") as f:
+                        f.write(archivo_subido.getbuffer())
+
+                    nueva_foto = {
+                        "archivo": nombre_archivo,
+                        "titulo": titulo_foto.strip(),
+                        "autor": autor_foto.strip() if autor_foto.strip() else "Familia Beniaján",
+                        "fecha": datetime.datetime.now().strftime("%d/%m/%Y")
+                    }
+                    lista_fotos.insert(0, nueva_foto)
+
+                    with open(archivo_registro, "w", encoding="utf-8") as f:
+                        json.dump(lista_fotos, f, ensure_ascii=False, indent=4)
+
+                    st.success("¡Fotografía subida correctamente!")
+                    st.rerun()
+
+    st.divider()
+
+    # ==========================================
+    # MURO DE FOTOGRAFÍAS EN CUADRÍCULA
+    # ==========================================
+    if not lista_fotos:
+        st.info("Aún no hay fotografías en el álbum. ¡Sé el primero en subir una desde el botón de arriba!")
+    else:
+        # Mostrar en filas de 3 columnas
+        columnas = st.columns(3)
+        for indice, foto in enumerate(lista_fotos):
+            ruta_img = os.path.join(carpeta_fotos, foto["archivo"])
+            if os.path.exists(ruta_img):
+                with columnas[indice % 3]:
+                    with st.container(border=True):
+                        st.image(ruta_img, use_container_width=True)
+                        st.markdown(f"**{foto['titulo']}**")
+                        st.caption(f"📷 {foto['autor']} · 📅 {foto['fecha']}")
+
+                        # Botón de borrado solo visible para el entrenador
+                        if es_admin:
+                            if st.button("🗑️ Eliminar", key=f"del_foto_{indice}"):
+                                if os.path.exists(ruta_img):
+                                    os.remove(ruta_img)
+                                lista_fotos.pop(indice)
+                                with open(archivo_registro, "w", encoding="utf-8") as f:
+                                    json.dump(lista_fotos, f, ensure_ascii=False, indent=4)
+                                st.success("Foto eliminada.")
+                                st.rerun()
 
