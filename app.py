@@ -127,7 +127,7 @@ if opcion == "Inicio":
         "deportiva y las comunicaciones del equipo."
     )
 
-        import json
+    import json
     import os
 
     archivo_partido = "proximo_partido.json"
