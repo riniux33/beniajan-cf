@@ -12,12 +12,9 @@ Dorsal,Nombre,Posicion,Estado
 12.0,Yoel,Delantero,Disponible
 14.0,Roberto,Centrocampista,Disponible
 17.0,Khalid,Centrocampista,Disponible
+19.0,Borja,Centrocampista,Disponible
 21.0,Antonio,Centrocampista,Disponible
-22.0,Nico,Centrocampista,Disponible
-23.0,Dayner,Defensa,Disponible
-,Borja,Portero,Disponible
+22.0,Nico,Defensa,Disponible
+23.0,Dayner,Portero,Disponible
 75.0,Izan,Defensa,Disponible
-,,Portero,Disponible
-,,Portero,Disponible
-,,Portero,Disponible
-,,Portero,Disponible
+,Mohammed,Portero,Disponible
