@@ -1,23 +1,23 @@
 Dorsal,Nombre,Posicion,Estado
-1,Ilías,Portero,Disponible
-13,Lucas,Portero,Disponible
-3,Adri,Defensa,Disponible
-4,Hugo,Defensa,Disponible
-5,Javi,Defensa,Disponible
-6,Adrián N.,Defensa,Disponible
-7,Alí,Defensa,Disponible
-8,Jugador 8,Defensa,Disponible
-18,Jugador 9,Defensa,Disponible
-6,Jugador 10,Centrocampista,Disponible
-8,Jugador 11,Centrocampista,Disponible
-10,Jugador 12,Centrocampista,Disponible
-14,Jugador 13,Centrocampista,Disponible
-16,Jugador 14,Centrocampista,Disponible
-17,Jugador 15,Centrocampista,Disponible
-20,Jugador 16,Centrocampista,Disponible
-21,Jugador 17,Centrocampista,Disponible
-7,Jugador 18,Delantero,Disponible
-9,Jugador 19,Delantero,Disponible
-11,Jugador 20,Delantero,Disponible
-19,Jugador 21,Delantero,Disponible
-22,Jugador 22,Delantero,Disponible
+1.0,Ilías,Portero,Disponible
+13.0,Lucas,Portero,Disponible
+3.0,Adri,Defensa,Disponible
+4.0,Hugo,Defensa,Disponible
+5.0,Javi,Defensa,Disponible
+6.0,Adrián N.,Centrocampista,Disponible
+7.0,Alí,Delantero,Disponible
+8.0,Arturo,Centrocampista,Disponible
+9.0,Dani,Delantero,Disponible
+10.0,Alejandro,Defensa,Disponible
+12.0,Yoel,Delantero,Disponible
+14.0,Roberto,Centrocampista,Disponible
+17.0,Khalid,Centrocampista,Disponible
+21.0,Antonio,Centrocampista,Disponible
+22.0,Nico,Centrocampista,Disponible
+75.0,Izan,Defensa,Disponible
+,,Centrocampista,Disponible
+,,Delantero,Disponible
+,,Delantero,Disponible
+,,Delantero,Disponible
+,,Delantero,Disponible
+,,Delantero,Disponible
