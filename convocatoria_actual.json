@@ -1,5 +1,78 @@
 {
     "partido": "Beniaján C.F  VS C.D Villa de Fortuna / Jornada 8",
     "notas": "Venimos con ropa de paseo todo el equipo. Bermuda/Chandal/Polo/Sudadera.\nTraer 1ª y  2ª equipación completa.\nBotella de agua y espinilleras.",
-    "convocados": []
+    "convocados": [
+        {
+            "jugador": "Dorsal 1 - Ilías (Portero)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 13 - Lucas (Portero)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 3 - Adri (Defensa C.)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 4 - Hugo (Defensa LD / LI)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 5 - Javi (Defensa C.)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 6 - Adrián N. (MO / Pivote)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 7 - Alí (Extremo I-D / IO)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 8 - Arturo (Defensa LD / LI)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 9 - Dani (Extremo I-D / IO)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 10 - Alejandro (Defensa LD / LI)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 12 - Yoel (Delantero)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 14 - Roberto (MC / I)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 19 - Borja (Extremo I-D / IO)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 17 - Khalid (MC / I)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 21 - Antonio (DC / Ariete)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 22 - Nico (MP / C.O)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 23 - Dayner (Defensa LD / LI)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 75 - Izan (DC / Ariete)",
+            "estado": "⏳ Pendiente"
+        }
+    ]
 }
