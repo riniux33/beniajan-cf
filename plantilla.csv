@@ -1,20 +1,20 @@
 Dorsal,Nombre,Posicion,Estado
 1.0,Ilías,Portero,Disponible
 13.0,Lucas,Portero,Disponible
-3.0,Adri,Defensa,Disponible
-4.0,Hugo,Defensa,Disponible
-5.0,Javi,Defensa,Disponible
-6.0,Adrián N.,Centrocampista,Disponible
-7.0,Alí,Delantero,Disponible
-8.0,Arturo,Centrocampista,Disponible
-9.0,Dani,Delantero,Disponible
-10.0,Alejandro,Defensa,Disponible
+3.0,Adri,Defensa C.,Disponible
+4.0,Hugo,Defensa LD / LI,Disponible
+5.0,Javi,Defensa C.,Disponible
+6.0,Adrián N.,MO / Pivote,Disponible
+7.0,Alí,Extremo I-D / IO,Disponible
+8.0,Arturo,Defensa LD / LI,Disponible
+9.0,Dani,Extremo I-D / IO,Disponible
+10.0,Alejandro,Defensa LD / LI,Disponible
 12.0,Yoel,Delantero,Disponible
-14.0,Roberto,Centrocampista,Disponible
-17.0,Khalid,Centrocampista,Disponible
-19.0,Borja,Centrocampista,Disponible
-21.0,Antonio,Centrocampista,Disponible
-22.0,Nico,Defensa,Disponible
-23.0,Dayner,Portero,Disponible
-75.0,Izan,Defensa,Disponible
+14.0,Roberto,MC / I,Disponible
+17.0,Khalid,MC / I,Disponible
+19.0,Borja,Extremo I-D / IO,Disponible
+21.0,Antonio,DC / Ariete,Disponible
+22.0,Nico,MP / C.O,Disponible
+23.0,Dayner,Defensa LD / LI,Disponible
+75.0,Izan,DC / Ariete,Disponible
 ,Mohammed,Portero,Disponible
