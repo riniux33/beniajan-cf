@@ -1,12 +1,12 @@
 Dorsal,Nombre,Posicion,Estado
-1,Jugador 1,Portero,Disponible
-13,Jugador 2,Portero,Disponible
-2,Jugador 3,Defensa,Disponible
-3,Jugador 4,Defensa,Disponible
-4,Jugador 5,Defensa,Disponible
-5,Jugador 6,Defensa,Disponible
-12,Jugador 7,Defensa,Disponible
-15,Jugador 8,Defensa,Disponible
+1,Ilías,Portero,Disponible
+13,Lucas,Portero,Disponible
+3,Adri,Defensa,Disponible
+4,Hugo,Defensa,Disponible
+5,Javi,Defensa,Disponible
+6,Adrián N.,Defensa,Disponible
+7,Alí,Defensa,Disponible
+8,Jugador 8,Defensa,Disponible
 18,Jugador 9,Defensa,Disponible
 6,Jugador 10,Centrocampista,Disponible
 8,Jugador 11,Centrocampista,Disponible
