@@ -7,10 +7,6 @@
             "estado": "✅ Confirmado"
         },
         {
-            "jugador": "Dorsal 13 - Lucas (Portero)",
-            "estado": "⏳ Pendiente"
-        },
-        {
             "jugador": "Dorsal 3 - Adri (Defensa C.)",
             "estado": "⏳ Pendiente"
         },
@@ -47,15 +43,19 @@
             "estado": "⏳ Pendiente"
         },
         {
+            "jugador": "Dorsal 13 - Lucas (Portero)",
+            "estado": "⏳ Pendiente"
+        },
+        {
             "jugador": "Dorsal 14 - Roberto (MC / I)",
             "estado": "⏳ Pendiente"
         },
         {
-            "jugador": "Dorsal 19 - Borja (Extremo I-D / IO)",
+            "jugador": "Dorsal 17 - Khalid (MC / I)",
             "estado": "⏳ Pendiente"
         },
         {
-            "jugador": "Dorsal 17 - Khalid (MC / I)",
+            "jugador": "Dorsal 19 - Borja (Extremo I-D / IO)",
             "estado": "⏳ Pendiente"
         },
         {
@@ -71,7 +71,11 @@
             "estado": "⏳ Pendiente"
         },
         {
-            "jugador": "Dorsal 75 - Izan (DC / Ariete)",
+            "jugador": "Dorsal 45 - Manu (MC / I)",
+            "estado": "⏳ Pendiente"
+        },
+        {
+            "jugador": "Dorsal 75 - Izan (Defensa LD / LI)",
             "estado": "⏳ Pendiente"
         }
     ]
