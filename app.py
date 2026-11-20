@@ -9,9 +9,7 @@ import base64
 from PIL import Image, ImageOps
 from github import Github
 
-# ======================================
-# FUNCIONES DE SINCRONIZACIÓN CON GITHUB
-# ======================================
+# Función para guardar archivos de forma permanente en GitHub
 def guardar_en_github(ruta_local, ruta_repo, mensaje_commit):
     try:
         if "github_token" in st.secrets:
@@ -42,6 +40,68 @@ def imagen_a_base64(ruta_img):
         with open(ruta_img, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
     return None
+
+# ======================================
+# GESTIÓN DE FOTOS DE JUGADORES
+# ======================================
+CARPETA_FOTOS_JUGADORES = "fotos_jugadores"
+ARCHIVO_FOTOS_JUGADORES = "jugadores_fotos.json"
+
+def cargar_mapa_fotos_jugadores():
+    if os.path.exists(ARCHIVO_FOTOS_JUGADORES):
+        try:
+            with open(ARCHIVO_FOTOS_JUGADORES, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def guardar_mapa_fotos_jugadores(mapa):
+    with open(ARCHIVO_FOTOS_JUGADORES, "w", encoding="utf-8") as f:
+        json.dump(mapa, f, ensure_ascii=False, indent=4)
+    guardar_en_github(ARCHIVO_FOTOS_JUGADORES, ARCHIVO_FOTOS_JUGADORES, "Actualiza registro fotos jugadores")
+
+def clave_foto_jugador(dorsal, nombre):
+    d_str = str(valor_dorsal_orden(dorsal))
+    n_str = str(nombre).strip()
+    return f"{d_str}_{n_str}"
+
+def procesar_y_guardar_foto_jugador(archivo_subido, clave_jug):
+    if not os.path.exists(CARPETA_FOTOS_JUGADORES):
+        os.makedirs(CARPETA_FOTOS_JUGADORES)
+    img = Image.open(archivo_subido)
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img_cuadrada = ImageOps.fit(img, (240, 240), method=Image.Resampling.LANCZOS, centering=(0.5, 0.3))
+    clave_limpia = re.sub(r"[^a-zA-Z0-9_-]", "_", clave_jug)
+    nombre_archivo = f"jugador_{clave_limpia}.jpg"
+    ruta_local = os.path.join(CARPETA_FOTOS_JUGADORES, nombre_archivo)
+    img_cuadrada.save(ruta_local, format="JPEG", quality=88)
+    guardar_en_github(ruta_local, f"{CARPETA_FOTOS_JUGADORES}/{nombre_archivo}", f"Foto jugador: {clave_jug}")
+    return nombre_archivo
+
+def generar_avatar_html(nombre, dorsal, mapa_fotos, tamano=64):
+    clave = clave_foto_jugador(dorsal, nombre)
+    nombre_foto = mapa_fotos.get(clave) or mapa_fotos.get(str(nombre).strip())
+    if nombre_foto:
+        ruta_foto = os.path.join(CARPETA_FOTOS_JUGADORES, nombre_foto)
+        b64 = imagen_a_base64(ruta_foto)
+        if b64:
+            return (
+                f'<div style="width:{tamano}px; height:{tamano}px; border-radius:50%; overflow:hidden; '
+                f'border:3px solid #ffcc00; box-shadow:0 3px 8px rgba(0,0,0,0.18); flex-shrink:0; background:#172033;">'
+                f'<img src="data:image/jpeg;base64,{b64}" style="width:100%; height:100%; object-fit:cover; display:block;" />'
+                f'</div>'
+            )
+
+    d_ord = valor_dorsal_orden(dorsal)
+    texto_dorsal = f"#{d_ord}" if d_ord != 999 else "⚽"
+    font_size = int(tamano * 0.34)
+    return (
+        f'<div style="width:{tamano}px; height:{tamano}px; border-radius:50%; border:3px solid #ffcc00; '
+        f'background:linear-gradient(135deg, #172033 0%, #263554 100%); color:#ffcc00; display:flex; '
+        f'align-items:center; justify-content:center; font-weight:800; font-size:{font_size}px; '
+        f'box-shadow:0 3px 8px rgba(0,0,0,0.15); flex-shrink:0;">{texto_dorsal}</div>'
+    )
 
 def formatear_dorsal(val):
     if pd.isna(val) or str(val).strip() == "":
@@ -80,77 +140,6 @@ def normalizar_plantilla(df):
     df["PIN"] = df["PIN"].apply(limpiar_pin)
     df = df[~((df["Nombre"] == "") & (df["Dorsal"].isna() | (df["Dorsal"].astype(str).str.strip() == "")))].reset_index(drop=True)
     return df
-
-# ======================================
-# GESTIÓN PROFESIONAL DE FOTOS DE JUGADORES
-# ======================================
-CARPETA_FOTOS_JUGADORES = "fotos_jugadores"
-ARCHIVO_FOTOS_JUGADORES = "jugadores_fotos.json"
-
-def cargar_mapa_fotos_jugadores():
-    if os.path.exists(ARCHIVO_FOTOS_JUGADORES):
-        try:
-            with open(ARCHIVO_FOTOS_JUGADORES, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def guardar_mapa_fotos_jugadores(mapa):
-    with open(ARCHIVO_FOTOS_JUGADORES, "w", encoding="utf-8") as f:
-        json.dump(mapa, f, ensure_ascii=False, indent=4)
-    guardar_en_github(ARCHIVO_FOTOS_JUGADORES, ARCHIVO_FOTOS_JUGADORES, "Actualiza registro de fotos de jugadores")
-
-def clave_unica_jugador(dorsal, nombre):
-    d_str = formatear_dorsal(dorsal)
-    return f"{d_str}_{str(nombre).strip()}"
-
-def procesar_y_guardar_foto_jugador(archivo_subido, clave_jugador):
-    if not os.path.exists(CARPETA_FOTOS_JUGADORES):
-        os.makedirs(CARPETA_FOTOS_JUGADORES)
-    img = Image.open(archivo_subido)
-    img = ImageOps.exif_transpose(img).convert("RGB")
-    img_cuadrada = ImageOps.fit(img, (260, 260), method=Image.Resampling.LANCZOS, centering=(0.5, 0.35))
-    
-    clave_limpia = re.sub(r"[^a-zA-Z0-9_-]", "_", str(clave_jugador))
-    nombre_archivo = f"jugador_{clave_limpia}.jpg"
-    ruta_local = os.path.join(CARPETA_FOTOS_JUGADORES, nombre_archivo)
-    
-    img_cuadrada.save(ruta_local, format="JPEG", quality=88)
-    guardar_en_github(ruta_local, f"{CARPETA_FOTOS_JUGADORES}/{nombre_archivo}", f"Foto jugador: {clave_jugador}")
-    return nombre_archivo
-
-def generar_avatar_html(nombre, dorsal, mapa_fotos, tamano=64):
-    clave_exacta = clave_unica_jugador(dorsal, nombre)
-    nombre_foto = mapa_fotos.get(clave_exacta)
-    if not nombre_foto:
-        sufijo = f"_{str(nombre).strip()}"
-        for k, v in mapa_fotos.items():
-            if k.endswith(sufijo):
-                nombre_foto = v
-                break
-
-    if nombre_foto:
-        ruta_foto = os.path.join(CARPETA_FOTOS_JUGADORES, nombre_foto)
-        b64 = imagen_a_base64(ruta_foto)
-        if b64:
-            return f"""
-            <div style="width:{tamano}px; height:{tamano}px; border-radius:50%; overflow:hidden; border:3px solid #ffcc00; box-shadow:0 3px 8px rgba(0,0,0,0.18); flex-shrink:0; background:#172033;">
-                <img src="data:image/jpeg;base64,{b64}" style="width:100%; height:100%; object-fit:cover; display:block;" />
-            </div>
-            """
-
-    d_str = formatear_dorsal(dorsal)
-    if d_str.startswith("Dorsal "):
-        texto_centro = f"#{d_str.replace('Dorsal ', '')}"
-    else:
-        texto_centro = "⚽"
-    font_size = int(tamano * 0.33)
-    return f"""
-    <div style="width:{tamano}px; height:{tamano}px; border-radius:50%; border:3px solid #ffcc00; background:linear-gradient(135deg, #172033 0%, #263554 100%); color:#ffcc00; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:{font_size}px; box-shadow:0 3px 8px rgba(0,0,0,0.15); flex-shrink:0;">
-        {texto_centro}
-    </div>
-    """
 
 # ======================================
 # 1. CONFIGURACIÓN DE LA PÁGINA (SIEMPRE ARRIBA)
@@ -197,7 +186,7 @@ st.markdown("""
 }
 .ficha-jugador {
     background-color: white;
-    border: 1px solid #e2e6ee;
+    border: 1px solid #d6d9e0;
     border-radius: 14px;
     padding: 12px 16px;
     margin-bottom: 10px;
@@ -205,7 +194,7 @@ st.markdown("""
     align-items: center;
     justify-content: space-between;
     gap: 14px;
-    box-shadow: 0 2px 6px rgba(23,32,51,0.04);
+    box-shadow: 0 2px 6px rgba(23,32,51,0.05);
 }
 .ficha-izq {
     display: flex;
@@ -367,6 +356,7 @@ if opcion == "Inicio":
 
     st.write("")
 
+    # Banner destacado con el último comunicado del entrenador
     if os.path.exists("comunicados.csv"):
         df_com_inicio = pd.read_csv("comunicados.csv")
         if not df_com_inicio.empty:
@@ -422,6 +412,7 @@ if opcion == "Inicio":
     </div>
     """, unsafe_allow_html=True)
 
+    # Contadores para los accesos rápidos
     num_jugadores = 0
     if os.path.exists("plantilla.csv"):
         df_tmp_pl = normalizar_plantilla(pd.read_csv("plantilla.csv"))
@@ -449,42 +440,30 @@ if opcion == "Inicio":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**
-
-Fichas y fotos de jugadores"
+        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**\n\nConsulta los jugadores del equipo"
         st.button(texto_plantilla, use_container_width=True, on_click=ir_a, args=("Plantilla",))
 
     with col2:
-        texto_calendario = "📅 **Calendario**
-
-Partidos y entrenamientos"
+        texto_calendario = "📅 **Calendario**\n\nPartidos y entrenamientos"
         st.button(texto_calendario, use_container_width=True, on_click=ir_a, args=("Calendario",))
 
     with col3:
         aviso_pend = f" · {num_pendientes} pend. 🔔" if num_pendientes > 0 else ""
-        texto_conv = f"📋 **Convocatorias ({num_convocados}{aviso_pend})**
-
-Consulta y confirma asistencia"
+        texto_conv = f"📋 **Convocatorias ({num_convocados}{aviso_pend})**\n\nConsulta y confirma asistencia"
         st.button(texto_conv, use_container_width=True, on_click=ir_a, args=("Convocatorias",))
 
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        texto_com = f"📢 **Comunicados ({num_mensajes})**
-
-Noticias y avisos del entrenador"
+        texto_com = f"📢 **Comunicados ({num_mensajes})**\n\nNoticias y avisos del entrenador"
         st.button(texto_com, use_container_width=True, on_click=ir_a, args=("Comunicados",))
 
     with col5:
-        texto_gal = f"📸 **Galería ({num_fotos})**
-
-Fotos y recuerdos del equipo"
+        texto_gal = f"📸 **Galería ({num_fotos})**\n\nFotos y recuerdos del equipo"
         st.button(texto_gal, use_container_width=True, on_click=ir_a, args=("Galería",))
 
     with col6:
-        if st.button("🔒 **Cuerpo Técnico**
-
-Acceso edición en menú lateral", use_container_width=True):
+        if st.button("🔒 **Cuerpo Técnico**\n\nAcceso edición en menú lateral", use_container_width=True):
             st.info("Pulsa la flecha **`>`** arriba a la izquierda para abrir el menú lateral e introducir la contraseña de entrenador.")
 
 # ======================================
@@ -521,33 +500,41 @@ elif opcion == "Plantilla":
 
     st.divider()
 
+    posiciones_filtro = ["Todas"] + opciones_demarcacion
+    filtro_pos = st.selectbox("Filtrar por demarcación:", posiciones_filtro)
+
+    if filtro_pos != "Todas":
+        df_vista = df_plantilla[df_plantilla["Posicion"] == filtro_pos]
+    else:
+        df_vista = df_plantilla
+
     if es_admin:
         with st.expander("📸 Gestionar fotos de jugadores (Subir o cambiar retrato)", expanded=False):
             if df_plantilla.empty:
-                st.info("Primero añade jugadores a la plantilla y pulsa Guardar.")
+                st.info("Añade primero los jugadores en la tabla de abajo para subirles su fotografía.")
             else:
-                df_orden_fotos = df_plantilla.copy()
-                df_orden_fotos["_ord"] = df_orden_fotos["Dorsal"].apply(valor_dorsal_orden)
-                df_orden_fotos = df_orden_fotos.sort_values(by=["_ord", "Nombre"])
+                df_ord_fotos = df_plantilla.copy()
+                df_ord_fotos["_ord"] = df_ord_fotos["Dorsal"].apply(valor_dorsal_orden)
+                df_ord_fotos = df_ord_fotos.sort_values(by=["_ord", "Nombre"]).reset_index(drop=True)
 
                 opciones_foto_jug = [
-                    f"{formatear_dorsal(row['Dorsal'])} - {row['Nombre']}"
-                    for _, row in df_orden_fotos.iterrows()
+                    f"{formatear_dorsal(r['Dorsal'])} - {r['Nombre']}"
+                    for _, r in df_ord_fotos.iterrows()
                 ]
-                mapa_opciones_row = {
-                    f"{formatear_dorsal(row['Dorsal'])} - {row['Nombre']}": row
-                    for _, row in df_orden_fotos.iterrows()
+                mapa_filas_foto = {
+                    f"{formatear_dorsal(r['Dorsal'])} - {r['Nombre']}": r
+                    for _, r in df_ord_fotos.iterrows()
                 }
 
                 jug_foto_sel = st.selectbox("Selecciona el jugador o portero:", options=opciones_foto_jug, key="sel_foto_jug")
-                row_sel = mapa_opciones_row[jug_foto_sel]
-                clave_jug = clave_unica_jugador(row_sel["Dorsal"], row_sel["Nombre"])
+                row_sel = mapa_filas_foto[jug_foto_sel]
+                clave_jug = clave_foto_jugador(row_sel["Dorsal"], row_sel["Nombre"])
 
-                col_f1, col_f2 = st.columns([1, 3.5])
+                col_f1, col_f2 = st.columns([1, 4])
                 with col_f1:
-                    st.markdown(generar_avatar_html(row_sel["Nombre"], row_sel["Dorsal"], mapa_fotos, tamano=88), unsafe_allow_html=True)
+                    st.markdown(generar_avatar_html(row_sel["Nombre"], row_sel["Dorsal"], mapa_fotos, tamano=84), unsafe_allow_html=True)
                 with col_f2:
-                    archivo_foto_j = st.file_uploader("Sube la foto del jugador (se encuadrará automáticamente en círculo):", key="up_foto_jug")
+                    archivo_foto_j = st.file_uploader("Sube la fotografía del jugador (se recortará automáticamente en círculo):", key="up_foto_jug")
                     b_col1, b_col2 = st.columns(2)
                     with b_col1:
                         if st.button("💾 Guardar foto del jugador", type="primary"):
@@ -635,41 +622,28 @@ elif opcion == "Plantilla":
                 file_name="plantilla.csv",
                 mime="text/csv"
             )
-        st.divider()
-
-    posiciones_filtro = ["Todas"] + opciones_demarcacion
-    filtro_pos = st.selectbox("Filtrar por demarcación:", posiciones_filtro)
-
-    if filtro_pos != "Todas":
-        df_vista = df_plantilla[df_plantilla["Posicion"] == filtro_pos].copy()
     else:
-        df_vista = df_plantilla.copy()
-
-    if df_vista.empty:
-        st.info("No hay jugadores registrados en esta demarcación.")
-    else:
-        df_vista["_ord"] = df_vista["Dorsal"].apply(valor_dorsal_orden)
-        df_vista = df_vista.sort_values(by=["_ord", "Nombre"])
-
-        for _, jugador in df_vista.iterrows():
-            icono_estado = "🟢" if jugador["Estado"] == "Disponible" else ("🔴" if jugador["Estado"] == "Lesionado" else "🟡")
-            dorsal_txt = formatear_dorsal(jugador["Dorsal"])
-            avatar_html = generar_avatar_html(jugador["Nombre"], jugador["Dorsal"], mapa_fotos, tamano=64)
-
-            st.markdown(f"""
-            <div class="ficha-jugador">
-                <div class="ficha-izq">
-                    {avatar_html}
-                    <div class="ficha-info">
-                        <div class="ficha-nombre"><span class="badge-dorsal">{dorsal_txt}</span> {jugador['Nombre']}</div>
-                        <div class="ficha-sub">⚽ {jugador['Posicion']}</div>
+        if df_vista.empty:
+            st.info("No hay jugadores registrados en esta demarcación.")
+        else:
+            for _, jugador in df_vista.iterrows():
+                icono_estado = "🟢" if jugador["Estado"] == "Disponible" else ("🔴" if jugador["Estado"] == "Lesionado" else "🟡")
+                dorsal_txt = formatear_dorsal(jugador["Dorsal"])
+                avatar_html = generar_avatar_html(jugador["Nombre"], jugador["Dorsal"], mapa_fotos, tamano=64)
+                st.markdown(f"""
+                <div class="ficha-jugador">
+                    <div class="ficha-izq">
+                        {avatar_html}
+                        <div class="ficha-info">
+                            <div class="ficha-nombre"><span class="badge-dorsal">{dorsal_txt}</span> {jugador['Nombre']}</div>
+                            <div class="ficha-sub">⚽ {jugador['Posicion']}</div>
+                        </div>
+                    </div>
+                    <div style="font-weight:700; font-size:14px; color:#172033; white-space:nowrap;">
+                        {icono_estado} {jugador['Estado']}
                     </div>
                 </div>
-                <div style="font-weight:600; font-size:14px; color:#172033; white-space:nowrap;">
-                    {icono_estado} {jugador['Estado']}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 # ======================================
 # SECCIÓN: CALENDARIO
@@ -857,6 +831,7 @@ elif opcion == "Convocatorias":
         with open(archivo_conv, "r", encoding="utf-8") as f:
             datos_conv = json.load(f)
 
+    # Cargar mapa de PINes y lista de jugadores desde plantilla.csv
     mapa_pines = {}
     df_pl = pd.DataFrame()
     if os.path.exists(archivo_plantilla):
@@ -1012,20 +987,19 @@ elif opcion == "Convocatorias":
         st.subheader("Lista oficial de convocados")
         for item in datos_conv["convocados"]:
             texto_jug = item["jugador"]
-            dorsal_val = ""
-            nombre_val = texto_jug
+            dorsal_enc = None
+            nombre_enc = texto_jug
 
             m_dorsal = re.search(r"Dorsal\s+(\d+)\s*-\s*([^(]+)", texto_jug)
             if m_dorsal:
-                dorsal_val = int(m_dorsal.group(1))
-                nombre_val = m_dorsal.group(2).strip()
+                dorsal_enc = int(m_dorsal.group(1))
+                nombre_enc = m_dorsal.group(2).strip()
             else:
                 m_sin = re.search(r"Sin dorsal\s*-\s*([^(]+)", texto_jug)
                 if m_sin:
-                    nombre_val = m_sin.group(1).strip()
+                    nombre_enc = m_sin.group(1).strip()
 
-            avatar_conv = generar_avatar_html(nombre_val, dorsal_val, mapa_fotos, tamano=54)
-
+            avatar_conv = generar_avatar_html(nombre_enc, dorsal_enc, mapa_fotos, tamano=54)
             st.markdown(f"""
             <div class="ficha-jugador">
                 <div class="ficha-izq">
