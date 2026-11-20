@@ -877,17 +877,15 @@ elif opcion == "Convocatorias":
                     )
 
                     if st.form_submit_button("📢 Publicar Convocatoria Oficial", type="primary"):
-                        previos_map = {
-                            c["jugador"]: c
+                        estados_previos = {
+                            c["jugador"]: c["estado"]
                             for c in datos_conv["convocados"]
                         }
                         nueva_lista = []
                         for jug in seleccionados:
-                            info_prev = previos_map.get(jug, {})
                             nueva_lista.append({
                                 "jugador": jug,
-                                "estado": info_prev.get("estado", "⏳ Pendiente"),
-                                "fecha_confirmacion": info_prev.get("fecha_confirmacion", "")
+                                "estado": estados_previos.get(jug, "⏳ Pendiente")
                             })
 
                         datos_conv = {
@@ -951,11 +949,9 @@ elif opcion == "Convocatorias":
                     st.write("")
                     st.write("")
                     if st.button("Guardar respuesta", type="primary"):
-                        ahora_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
                         for item in datos_conv["convocados"]:
                             if item["jugador"] == jugador_elegido:
                                 item["estado"] = nuevo_estado
-                                item["fecha_confirmacion"] = "" if nuevo_estado == "⏳ Pendiente" else f"{ahora_str} (Entrenador)"
                         with open(archivo_conv, "w", encoding="utf-8") as f:
                             json.dump(datos_conv, f, ensure_ascii=False, indent=4)
                         guardar_en_github(archivo_conv, archivo_conv, f"Asistencia (Entrenador): {jugador_elegido}")
@@ -979,11 +975,9 @@ elif opcion == "Convocatorias":
                         elif pin_introducido.strip() != pin_correcto:
                             st.error("❌ PIN incorrecto. Revisa tu código de 4 cifras.")
                         else:
-                            ahora_str = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
                             for item in datos_conv["convocados"]:
                                 if item["jugador"] == jugador_elegido:
                                     item["estado"] = nuevo_estado
-                                    item["fecha_confirmacion"] = "" if nuevo_estado == "⏳ Pendiente" else ahora_str
                             with open(archivo_conv, "w", encoding="utf-8") as f:
                                 json.dump(datos_conv, f, ensure_ascii=False, indent=4)
                             guardar_en_github(archivo_conv, archivo_conv, f"Asistencia: {jugador_elegido}")
@@ -1006,12 +1000,6 @@ elif opcion == "Convocatorias":
                     nombre_enc = m_sin.group(1).strip()
 
             avatar_conv = generar_avatar_html(nombre_enc, dorsal_enc, mapa_fotos, tamano=54)
-            fecha_conf = item.get("fecha_confirmacion", "")
-            html_fecha = (
-                f'<div style="font-size:11px; color:#5c667a; margin-top:3px;">🕒 {fecha_conf}</div>'
-                if fecha_conf else ""
-            )
-
             st.markdown(f"""
             <div class="ficha-jugador">
                 <div class="ficha-izq">
@@ -1020,9 +1008,8 @@ elif opcion == "Convocatorias":
                         <div class="ficha-nombre">{texto_jug}</div>
                     </div>
                 </div>
-                <div style="text-align:right; white-space:nowrap;">
-                    <div style="font-weight:700; font-size:14px; color:#172033;">{item['estado']}</div>
-                    {html_fecha}
+                <div style="font-weight:700; font-size:14px; color:#172033; white-space:nowrap;">
+                    {item['estado']}
                 </div>
             </div>
             """, unsafe_allow_html=True)
