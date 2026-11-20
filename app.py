@@ -4,8 +4,8 @@ import datetime
 import json
 import os
 import re
+import random
 import base64
-from io import BytesIO
 from PIL import Image, ImageOps
 from github import Github
 
@@ -43,13 +43,46 @@ def imagen_a_base64(ruta_img):
             return base64.b64encode(f.read()).decode("utf-8")
     return None
 
-def limpiar_nombre_archivo(nombre):
-    base, ext = os.path.splitext(nombre)
-    base_limpia = re.sub(r'[^a-zA-Z0-9_-]', '_', base)
-    return f"{base_limpia}{ext.lower()}"
+def formatear_dorsal(val):
+    if pd.isna(val) or str(val).strip() == "":
+        return "Sin dorsal"
+    try:
+        return f"Dorsal {int(float(val))}"
+    except Exception:
+        return f"Dorsal {str(val).strip()}"
+
+def valor_dorsal_orden(val):
+    try:
+        if pd.isna(val) or str(val).strip() == "":
+            return 999
+        return int(float(val))
+    except Exception:
+        return 999
+
+def limpiar_pin(val):
+    if pd.isna(val):
+        return ""
+    s = str(val).strip()
+    if s.endswith(".0"):
+        s = s[:-2]
+    return s
+
+def normalizar_plantilla(df):
+    df = df.copy()
+    for col in ["Dorsal", "Nombre", "Posicion", "Estado", "PIN"]:
+        if col not in df.columns:
+            df[col] = ""
+    df["Nombre"] = df["Nombre"].fillna("").astype(str).str.strip()
+    df["Posicion"] = df["Posicion"].fillna("Ninguna").astype(str).str.strip()
+    df.loc[df["Posicion"] == "", "Posicion"] = "Ninguna"
+    df["Estado"] = df["Estado"].fillna("Disponible").astype(str).str.strip()
+    df.loc[df["Estado"] == "", "Estado"] = "Disponible"
+    df["PIN"] = df["PIN"].apply(limpiar_pin)
+    df = df[~((df["Nombre"] == "") & (df["Dorsal"].isna() | (df["Dorsal"].astype(str).str.strip() == "")))].reset_index(drop=True)
+    return df
 
 # ======================================
-# GESTIÓN DE FOTOS DE JUGADORES
+# GESTIÓN PROFESIONAL DE FOTOS DE JUGADORES
 # ======================================
 CARPETA_FOTOS_JUGADORES = "fotos_jugadores"
 ARCHIVO_FOTOS_JUGADORES = "jugadores_fotos.json"
@@ -66,17 +99,20 @@ def cargar_mapa_fotos_jugadores():
 def guardar_mapa_fotos_jugadores(mapa):
     with open(ARCHIVO_FOTOS_JUGADORES, "w", encoding="utf-8") as f:
         json.dump(mapa, f, ensure_ascii=False, indent=4)
-    guardar_en_github(ARCHIVO_FOTOS_JUGADORES, ARCHIVO_FOTOS_JUGADORES, "Actualiza registro fotos jugadores")
+    guardar_en_github(ARCHIVO_FOTOS_JUGADORES, ARCHIVO_FOTOS_JUGADORES, "Actualiza registro de fotos de jugadores")
+
+def clave_unica_jugador(dorsal, nombre):
+    d_str = formatear_dorsal(dorsal)
+    return f"{d_str}_{str(nombre).strip()}"
 
 def procesar_y_guardar_foto_jugador(archivo_subido, clave_jugador):
     if not os.path.exists(CARPETA_FOTOS_JUGADORES):
         os.makedirs(CARPETA_FOTOS_JUGADORES)
     img = Image.open(archivo_subido)
-    img = ImageOps.exif_transpose(img)
-    img = img.convert("RGB")
-    img_cuadrada = ImageOps.fit(img, (240, 240), method=Image.Resampling.LANCZOS, centering=(0.5, 0.35))
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img_cuadrada = ImageOps.fit(img, (260, 260), method=Image.Resampling.LANCZOS, centering=(0.5, 0.35))
     
-    clave_limpia = re.sub(r'[^a-zA-Z0-9_-]', '_', str(clave_jugador))
+    clave_limpia = re.sub(r"[^a-zA-Z0-9_-]", "_", str(clave_jugador))
     nombre_archivo = f"jugador_{clave_limpia}.jpg"
     ruta_local = os.path.join(CARPETA_FOTOS_JUGADORES, nombre_archivo)
     
@@ -85,9 +121,15 @@ def procesar_y_guardar_foto_jugador(archivo_subido, clave_jugador):
     return nombre_archivo
 
 def generar_avatar_html(nombre, dorsal, mapa_fotos, tamano=64):
-    clave = f"{dorsal}_{nombre}".strip()
-    nombre_foto = mapa_fotos.get(clave) or mapa_fotos.get(str(nombre).strip())
-    
+    clave_exacta = clave_unica_jugador(dorsal, nombre)
+    nombre_foto = mapa_fotos.get(clave_exacta)
+    if not nombre_foto:
+        sufijo = f"_{str(nombre).strip()}"
+        for k, v in mapa_fotos.items():
+            if k.endswith(sufijo):
+                nombre_foto = v
+                break
+
     if nombre_foto:
         ruta_foto = os.path.join(CARPETA_FOTOS_JUGADORES, nombre_foto)
         b64 = imagen_a_base64(ruta_foto)
@@ -97,81 +139,21 @@ def generar_avatar_html(nombre, dorsal, mapa_fotos, tamano=64):
                 <img src="data:image/jpeg;base64,{b64}" style="width:100%; height:100%; object-fit:cover; display:block;" />
             </div>
             """
-    
-    texto_dorsal = f"#{dorsal}" if str(dorsal).isdigit() and int(dorsal) > 0 else "⚽"
-    font_size = int(tamano * 0.34)
+
+    d_str = formatear_dorsal(dorsal)
+    if d_str.startswith("Dorsal "):
+        texto_centro = f"#{d_str.replace('Dorsal ', '')}"
+    else:
+        texto_centro = "⚽"
+    font_size = int(tamano * 0.33)
     return f"""
     <div style="width:{tamano}px; height:{tamano}px; border-radius:50%; border:3px solid #ffcc00; background:linear-gradient(135deg, #172033 0%, #263554 100%); color:#ffcc00; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:{font_size}px; box-shadow:0 3px 8px rgba(0,0,0,0.15); flex-shrink:0;">
-        {texto_dorsal}
+        {texto_centro}
     </div>
     """
 
 # ======================================
-# NORMALIZACIÓN DE PLANTILLA
-# ======================================
-POSICIONES_OFICIALES = [
-    "Ninguna",
-    "Portero",
-    "Defensa LD / LI",
-    "Defensa C.",
-    "MO / Pivote",
-    "MC / I",
-    "MP / C.O",
-    "Extremo I-D / IO",
-    "DC / Ariete"
-]
-
-def normalizar_plantilla(df):
-    df = df.copy()
-    for col in ["Dorsal", "Nombre", "Posicion", "Estado", "PIN"]:
-        if col not in df.columns:
-            if col == "Posicion":
-                df[col] = "Ninguna"
-            elif col == "Estado":
-                df[col] = "Disponible"
-            else:
-                df[col] = ""
-    
-    df["Nombre"] = df["Nombre"].fillna("").astype(str).str.strip()
-    df = df[df["Nombre"] != ""].copy()
-    
-    def limpiar_dorsal(val):
-        try:
-            num = int(float(val))
-            return num if num > 0 else 0
-        except Exception:
-            return 0
-            
-    df["Dorsal"] = df["Dorsal"].apply(limpiar_dorsal)
-    
-    def limpiar_pos(val):
-        s = str(val).strip() if pd.notna(val) else "Ninguna"
-        return s if s in POSICIONES_OFICIALES else "Ninguna"
-        
-    df["Posicion"] = df["Posicion"].apply(limpiar_pos)
-    
-    def limpiar_estado(val):
-        s = str(val).strip() if pd.notna(val) else ""
-        if s in ["Lesionado", "Sancionado"]:
-            return s
-        return "Disponible"
-        
-    df["Estado"] = df["Estado"].apply(limpiar_estado)
-    
-    def limpiar_pin(val):
-        if pd.isna(val):
-            return ""
-        s = str(val).strip()
-        if s.endswith(".0"):
-            s = s[:-2]
-        return s if s.isdigit() else ""
-        
-    df["PIN"] = df["PIN"].apply(limpiar_pin)
-    df = df.sort_values(by=["Dorsal", "Nombre"], ascending=[True, True]).reset_index(drop=True)
-    return df[["Dorsal", "Nombre", "Posicion", "Estado", "PIN"]]
-
-# ======================================
-# 1. CONFIGURACIÓN DE LA PÁGINA
+# 1. CONFIGURACIÓN DE LA PÁGINA (SIEMPRE ARRIBA)
 # ======================================
 icono_app = "escudo.png.png" if os.path.exists("escudo.png.png") else ("escudo.png" if os.path.exists("escudo.png") else "⚽")
 
@@ -195,44 +177,22 @@ st.markdown("""
 .stApp {
     background-color: #f4f5f7;
 }
-.main-title-default {
-    background: linear-gradient(135deg, #172033 0%, #243352 100%);
-    padding: 25px;
-    border-radius: 15px;
-    text-align: center;
-    color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-.main-title-default h1 {
-    color: #ffcc00;
-    margin-bottom: 5px;
-    font-size: clamp(22px, 5vw, 36px);
-}
-.main-title-default p {
-    color: white;
-    margin: 2px 0;
-}
 .match {
     background-color: #172033;
     padding: 20px;
     border-radius: 12px;
     color: white;
     margin-bottom: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
 .match h3 {
     color: #ffcc00;
-    margin-top: 0;
 }
 .aviso-portada {
     background-color: #fff8db;
     border-left: 6px solid #ffcc00;
-    border-top: 1px solid #f0e0a0;
-    border-right: 1px solid #f0e0a0;
-    border-bottom: 1px solid #f0e0a0;
     padding: 15px 18px;
     border-radius: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     color: #172033;
 }
 .ficha-jugador {
@@ -284,7 +244,7 @@ div[data-testid="stButton"] > button[kind="secondary"] {
     padding: 20px 14px;
     min-height: 105px;
     color: #172033;
-    font-size: 15px;
+    font-size: 16px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     transition: all 0.2s ease;
 }
@@ -299,13 +259,13 @@ div[data-testid="stButton"] > button[kind="secondary"]:hover {
 # ======================================
 # 3. ENCABEZADO SUPERIOR CON ESCUDO
 # ======================================
-col1, col2 = st.columns([1, 5])
+col1, col2 = st.columns([1, 4])
 
 with col1:
     if os.path.exists("escudo.png.png"):
-        st.image("escudo.png.png", width=95)
+        st.image("escudo.png.png", width=100)
     elif os.path.exists("escudo.png"):
-        st.image("escudo.png", width=95)
+        st.image("escudo.png", width=100)
     else:
         st.markdown("# ⚽")
 
@@ -348,66 +308,70 @@ if clave_introducida:
 
 st.sidebar.divider()
 st.sidebar.caption("Temporada 2026/2027")
-st.sidebar.caption("Aplicación oficial del equipo")
+st.sidebar.caption("Aplicación del equipo")
 
 # ======================================
 # PANTALLA DE INICIO
 # ======================================
 if opcion == "Inicio":
 
-    archivo_foto_equipo = "equipo_portada.jpg"
-
+    foto_portada = "equipo_portada.jpg"
     if es_admin:
         with st.expander("🖼️ Cambiar foto de fondo del cartel principal"):
-            foto_eq_subida = st.file_uploader("Selecciona una foto horizontal del equipo:", key="up_portada")
-            if st.button("💾 Guardar foto en portada", type="primary"):
-                if foto_eq_subida is not None:
-                    img_eq = Image.open(foto_eq_subida)
-                    img_eq = ImageOps.exif_transpose(img_eq).convert("RGB")
-                    img_eq.save(archivo_foto_equipo, format="JPEG", quality=88)
-                    guardar_en_github(archivo_foto_equipo, archivo_foto_equipo, "Actualiza foto de portada")
-                    st.success("¡Foto de portada guardada!")
+            nueva_portada = st.file_uploader("Sube una foto horizontal del equipo:")
+            if st.button("💾 Guardar foto de portada", type="primary"):
+                if nueva_portada is not None:
+                    with open(foto_portada, "wb") as f:
+                        f.write(nueva_portada.getbuffer())
+                    guardar_en_github(foto_portada, foto_portada, "Actualiza foto de portada del equipo")
+                    st.success("¡Foto de portada actualizada!")
                     st.rerun()
                 else:
                     st.warning("Selecciona primero una imagen.")
 
-    b64_equipo = imagen_a_base64(archivo_foto_equipo)
-    if b64_equipo:
+    if os.path.exists(foto_portada):
+        with open(foto_portada, "rb") as img_f:
+            b64_img = base64.b64encode(img_f.read()).decode()
         st.markdown(f"""
         <div style="
-            background-image: linear-gradient(to top, rgba(23,32,51,0.92) 0%, rgba(23,32,51,0.35) 45%, rgba(23,32,51,0.05) 100%), url('data:image/jpeg;base64,{b64_equipo}');
+            background-image: linear-gradient(to top, rgba(23,32,51,0.92) 0%, rgba(23,32,51,0.25) 45%, rgba(23,32,51,0.05) 100%), url('data:image/jpeg;base64,{b64_img}');
             background-size: cover;
-            background-position: center top;
+            background-position: center 25%;
             min-height: 290px;
-            border-radius: 15px;
             padding: 20px;
+            border-radius: 15px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
             text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            color: white;
         ">
-            <h1 style="color:#ffcc00; margin:0 0 4px 0; font-size:clamp(20px, 4.5vw, 32px); text-shadow: 1px 1px 4px rgba(0,0,0,0.8);">BENIAJÁN C.F.</h1>
-            <p style="color:white; margin:0; font-size:clamp(13px, 3vw, 16px); text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">Aplicación oficial de nuestro equipo · Infantil A · Temporada 2026/2027</p>
+            <h1 style="color: #ffcc00; font-size: clamp(1.4rem, 4.5vw, 2.3rem); margin: 0 0 4px 0; text-shadow: 1px 1px 4px rgba(0,0,0,0.8);">BENIAJÁN C.F.</h1>
+            <p style="margin: 0; font-size: clamp(0.85rem, 2.8vw, 1.05rem); text-shadow: 1px 1px 3px rgba(0,0,0,0.8);">Aplicación oficial de nuestro equipo - Infantil A · Temporada 2026/2027</p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
-        <div class="main-title-default">
-            <h1>BENIAJÁN C.F.</h1>
-            <p>Aplicación oficial de nuestro equipo - Infantil A</p>
-            <p>Temporada 2026/2027</p>
+        <div style="
+            background-color: #172033;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+        ">
+            <h1 style="color: #ffcc00; font-size: clamp(1.5rem, 5vw, 2.4rem); margin-bottom: 5px;">BENIAJÁN C.F.</h1>
+            <p style="margin: 0;">Aplicación oficial de nuestro equipo - Infantil A</p>
+            <p style="margin: 0;">Temporada 2026/2027</p>
         </div>
         """, unsafe_allow_html=True)
 
     st.write("")
 
-    # Último comunicado destacado en portada
     if os.path.exists("comunicados.csv"):
         df_com_inicio = pd.read_csv("comunicados.csv")
         if not df_com_inicio.empty:
-            df_oficial = df_com_inicio[df_com_inicio["Rol"] == "Entrenador"]
-            ultimo = df_oficial.iloc[0] if not df_oficial.empty else df_com_inicio.iloc[0]
+            oficiales = df_com_inicio[df_com_inicio["Rol"] == "Entrenador"]
+            ultimo = oficiales.iloc[0] if not oficiales.empty else df_com_inicio.iloc[0]
             st.markdown(f"""
             <div class="aviso-portada">
                 <strong>📢 ÚLTIMO AVISO ({ultimo['Autor']} · {ultimo['Fecha']}):</strong><br>
@@ -415,7 +379,6 @@ if opcion == "Inicio":
             </div>
             """, unsafe_allow_html=True)
 
-    # Cartel próximo partido
     archivo_partido = "proximo_partido.json"
     datos_partido = {
         "encuentro": "BENIAJÁN C.F. - EQUIPO RIVAL",
@@ -459,18 +422,18 @@ if opcion == "Inicio":
     </div>
     """, unsafe_allow_html=True)
 
-    # Contadores para botones
     num_jugadores = 0
     if os.path.exists("plantilla.csv"):
-        num_jugadores = len(normalizar_plantilla(pd.read_csv("plantilla.csv")))
+        df_tmp_pl = normalizar_plantilla(pd.read_csv("plantilla.csv"))
+        num_jugadores = len(df_tmp_pl)
 
-    num_conv = 0
-    pendientes_conv = 0
+    num_convocados = 0
+    num_pendientes = 0
     if os.path.exists("convocatoria_actual.json"):
         with open("convocatoria_actual.json", "r", encoding="utf-8") as f:
-            c_data = json.load(f)
-            num_conv = len(c_data.get("convocados", []))
-            pendientes_conv = sum(1 for c in c_data.get("convocados", []) if c.get("estado") == "⏳ Pendiente")
+            d_conv_tmp = json.load(f)
+            num_convocados = len(d_conv_tmp.get("convocados", []))
+            num_pendientes = sum(1 for c in d_conv_tmp.get("convocados", []) if c.get("estado") == "⏳ Pendiente")
 
     num_mensajes = 0
     if os.path.exists("comunicados.csv"):
@@ -486,30 +449,42 @@ if opcion == "Inicio":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**\n\nFichas y fotos de jugadores"
+        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**
+
+Fichas y fotos de jugadores"
         st.button(texto_plantilla, use_container_width=True, on_click=ir_a, args=("Plantilla",))
 
     with col2:
-        texto_calendario = "📅 **Calendario**\n\nPartidos y entrenamientos"
+        texto_calendario = "📅 **Calendario**
+
+Partidos y entrenamientos"
         st.button(texto_calendario, use_container_width=True, on_click=ir_a, args=("Calendario",))
 
     with col3:
-        aviso_conv = f" 🔔 ({pendientes_conv} pend.)" if pendientes_conv > 0 else ""
-        texto_conv = f"📋 **Convocatorias ({num_conv}){aviso_conv}**\n\nConsulta y confirma asistencia"
+        aviso_pend = f" · {num_pendientes} pend. 🔔" if num_pendientes > 0 else ""
+        texto_conv = f"📋 **Convocatorias ({num_convocados}{aviso_pend})**
+
+Consulta y confirma asistencia"
         st.button(texto_conv, use_container_width=True, on_click=ir_a, args=("Convocatorias",))
 
     col4, col5, col6 = st.columns(3)
 
     with col4:
-        texto_com = f"📢 **Comunicados ({num_mensajes})**\n\nNoticias y avisos del equipo"
+        texto_com = f"📢 **Comunicados ({num_mensajes})**
+
+Noticias y avisos del entrenador"
         st.button(texto_com, use_container_width=True, on_click=ir_a, args=("Comunicados",))
 
     with col5:
-        texto_gal = f"📸 **Galería ({num_fotos})**\n\nFotos y recuerdos del equipo"
+        texto_gal = f"📸 **Galería ({num_fotos})**
+
+Fotos y recuerdos del equipo"
         st.button(texto_gal, use_container_width=True, on_click=ir_a, args=("Galería",))
 
     with col6:
-        if st.button("🔒 **Cuerpo Técnico**\n\nAcceso edición en menú lateral", use_container_width=True):
+        if st.button("🔒 **Cuerpo Técnico**
+
+Acceso edición en menú lateral", use_container_width=True):
             st.info("Pulsa la flecha **`>`** arriba a la izquierda para abrir el menú lateral e introducir la contraseña de entrenador.")
 
 # ======================================
@@ -521,141 +496,172 @@ elif opcion == "Plantilla":
 
     archivo_plantilla = "plantilla.csv"
     mapa_fotos = cargar_mapa_fotos_jugadores()
+    opciones_demarcacion = [
+        "Ninguna",
+        "Portero",
+        "Defensa LD / LI",
+        "Defensa C.",
+        "MO / Pivote",
+        "MC / I",
+        "MP / C.O",
+        "Extremo I-D / IO",
+        "DC / Ariete"
+    ]
 
     if os.path.exists(archivo_plantilla):
         df_plantilla = normalizar_plantilla(pd.read_csv(archivo_plantilla))
+    else:
+        df_plantilla = pd.DataFrame(columns=["Dorsal", "Nombre", "Posicion", "Estado", "PIN"])
 
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        col_m1.metric("Total Jugadores", len(df_plantilla))
-        col_m2.metric("Disponibles", len(df_plantilla[df_plantilla["Estado"] == "Disponible"]))
-        col_m3.metric("Lesionados", len(df_plantilla[df_plantilla["Estado"] == "Lesionado"]))
-        col_m4.metric("Sancionados / Baja", len(df_plantilla[df_plantilla["Estado"] == "Sancionado"]))
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    col_m1.metric("Total Jugadores", len(df_plantilla))
+    col_m2.metric("Disponibles", len(df_plantilla[df_plantilla["Estado"] == "Disponible"]))
+    col_m3.metric("Lesionados", len(df_plantilla[df_plantilla["Estado"] == "Lesionado"]))
+    col_m4.metric("Sancionados / Baja", len(df_plantilla[df_plantilla["Estado"] == "Sancionado"]))
 
-        st.divider()
+    st.divider()
 
-        if es_admin:
-            # Gestor de fotos de jugadores
-            with st.expander("📸 Gestionar fotos de jugadores (Subir o cambiar retrato)", expanded=False):
+    if es_admin:
+        with st.expander("📸 Gestionar fotos de jugadores (Subir o cambiar retrato)", expanded=False):
+            if df_plantilla.empty:
+                st.info("Primero añade jugadores a la plantilla y pulsa Guardar.")
+            else:
+                df_orden_fotos = df_plantilla.copy()
+                df_orden_fotos["_ord"] = df_orden_fotos["Dorsal"].apply(valor_dorsal_orden)
+                df_orden_fotos = df_orden_fotos.sort_values(by=["_ord", "Nombre"])
+
                 opciones_foto_jug = [
-                    f"Dorsal {row['Dorsal']} - {row['Nombre']}" if row["Dorsal"] > 0 else f"Sin dorsal - {row['Nombre']}"
-                    for _, row in df_plantilla.iterrows()
+                    f"{formatear_dorsal(row['Dorsal'])} - {row['Nombre']}"
+                    for _, row in df_orden_fotos.iterrows()
                 ]
                 mapa_opciones_row = {
-                    (f"Dorsal {row['Dorsal']} - {row['Nombre']}" if row["Dorsal"] > 0 else f"Sin dorsal - {row['Nombre']}"): row
-                    for _, row in df_plantilla.iterrows()
+                    f"{formatear_dorsal(row['Dorsal'])} - {row['Nombre']}": row
+                    for _, row in df_orden_fotos.iterrows()
                 }
-                
-                if opciones_foto_jug:
-                    jug_foto_sel = st.selectbox("Selecciona el jugador o portero:", options=opciones_foto_jug, key="sel_foto_jug")
-                    row_sel = mapa_opciones_row[jug_foto_sel]
-                    clave_jug = f"{row_sel['Dorsal']}_{row_sel['Nombre']}".strip()
-                    
-                    col_f1, col_f2 = st.columns([1, 3])
-                    with col_f1:
-                        st.markdown(generar_avatar_html(row_sel["Nombre"], row_sel["Dorsal"], mapa_fotos, tamano=84), unsafe_allow_html=True)
-                    with col_f2:
-                        archivo_foto_j = st.file_uploader("Sube la fotografía del jugador (se recortará automáticamente en círculo):", key="up_foto_jug")
-                        b_col1, b_col2 = st.columns(2)
-                        with b_col1:
-                            if st.button("💾 Guardar foto del jugador", type="primary"):
-                                if archivo_foto_j is not None:
-                                    nombre_guardado = procesar_y_guardar_foto_jugador(archivo_foto_j, clave_jug)
-                                    mapa_fotos[clave_jug] = nombre_guardado
-                                    guardar_mapa_fotos_jugadores(mapa_fotos)
-                                    st.success(f"¡Foto guardada para {row_sel['Nombre']}!")
-                                    st.rerun()
-                                else:
-                                    st.warning("Selecciona primero una imagen.")
-                        with b_col2:
-                            if clave_jug in mapa_fotos:
-                                if st.button("🗑️ Quitar foto actual"):
-                                    archivo_ant = mapa_fotos.pop(clave_jug)
-                                    ruta_ant = os.path.join(CARPETA_FOTOS_JUGADORES, archivo_ant)
-                                    if os.path.exists(ruta_ant):
-                                        os.remove(ruta_ant)
-                                    borrar_en_github(f"{CARPETA_FOTOS_JUGADORES}/{archivo_ant}", f"Elimina foto de {row_sel['Nombre']}")
-                                    guardar_mapa_fotos_jugadores(mapa_fotos)
-                                    st.success("Foto eliminada.")
-                                    st.rerun()
 
-            st.info("✏️ **Modo Entrenador:** Edita dorsales, nombres, demarcaciones, estados o asigna el **PIN de 4 dígitos** a cada jugador.")
+                jug_foto_sel = st.selectbox("Selecciona el jugador o portero:", options=opciones_foto_jug, key="sel_foto_jug")
+                row_sel = mapa_opciones_row[jug_foto_sel]
+                clave_jug = clave_unica_jugador(row_sel["Dorsal"], row_sel["Nombre"])
 
-            if st.button("🎲 Generar PIN aleatorio de 4 dígitos a los que no tengan"):
-                import random
-                pines_usados = set(df_plantilla["PIN"].tolist())
-                for idx, row in df_plantilla.iterrows():
-                    if not str(row["PIN"]).strip():
-                        nuevo_pin = str(random.randint(1000, 9999))
-                        while nuevo_pin in pines_usados:
-                            nuevo_pin = str(random.randint(1000, 9999))
-                        df_plantilla.at[idx, "PIN"] = nuevo_pin
-                        pines_usados.add(nuevo_pin)
-                df_plantilla.to_csv(archivo_plantilla, index=False)
-                guardar_en_github(archivo_plantilla, archivo_plantilla, "Genera PINes de asistencia")
-                st.success("¡PINes generados y guardados!")
-                st.rerun()
+                col_f1, col_f2 = st.columns([1, 3.5])
+                with col_f1:
+                    st.markdown(generar_avatar_html(row_sel["Nombre"], row_sel["Dorsal"], mapa_fotos, tamano=88), unsafe_allow_html=True)
+                with col_f2:
+                    archivo_foto_j = st.file_uploader("Sube la foto del jugador (se encuadrará automáticamente en círculo):", key="up_foto_jug")
+                    b_col1, b_col2 = st.columns(2)
+                    with b_col1:
+                        if st.button("💾 Guardar foto del jugador", type="primary"):
+                            if archivo_foto_j is not None:
+                                nombre_guardado = procesar_y_guardar_foto_jugador(archivo_foto_j, clave_jug)
+                                mapa_fotos[clave_jug] = nombre_guardado
+                                guardar_mapa_fotos_jugadores(mapa_fotos)
+                                st.success(f"¡Foto guardada para {row_sel['Nombre']}!")
+                                st.rerun()
+                            else:
+                                st.warning("Selecciona primero una imagen.")
+                    with b_col2:
+                        if clave_jug in mapa_fotos:
+                            if st.button("🗑️ Quitar foto actual"):
+                                archivo_ant = mapa_fotos.pop(clave_jug)
+                                ruta_ant = os.path.join(CARPETA_FOTOS_JUGADORES, archivo_ant)
+                                if os.path.exists(ruta_ant):
+                                    os.remove(ruta_ant)
+                                borrar_en_github(f"{CARPETA_FOTOS_JUGADORES}/{archivo_ant}", f"Elimina foto de {row_sel['Nombre']}")
+                                guardar_mapa_fotos_jugadores(mapa_fotos)
+                                st.success("Foto eliminada.")
+                                st.rerun()
 
-            df_plantilla_editada = st.data_editor(
-                df_plantilla,
-                num_rows="dynamic",
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Dorsal": st.column_config.NumberColumn("Dorsal", min_value=0, max_value=99, step=1),
-                    "Posicion": st.column_config.SelectboxColumn(
-                        "Demarcación",
-                        options=POSICIONES_OFICIALES,
-                        required=True
-                    ),
-                    "Estado": st.column_config.SelectboxColumn(
-                        "Estado",
-                        options=["Disponible", "Lesionado", "Sancionado"],
-                        required=True
-                    ),
-                    "PIN": st.column_config.TextColumn(
-                        "PIN (4 dígitos)",
-                        help="Código secreto de 4 números para confirmar asistencia"
-                    )
-                }
-            )
+        st.info("✏️ **Modo Entrenador:** Añade jugadores al final de la tabla o haz doble clic para editar. **Recuerda pulsar '💾 Guardar cambios de plantilla' antes de salir de esta pantalla.**")
 
-            col_p1, col_p2 = st.columns(2)
-            with col_p1:
-                if st.button("💾 Guardar cambios de plantilla", type="primary"):
-                    df_limpia = normalizar_plantilla(df_plantilla_editada)
-                    df_limpia.to_csv(archivo_plantilla, index=False)
-                    guardar_en_github(archivo_plantilla, archivo_plantilla, "Actualiza plantilla")
-                    st.success("Plantilla guardada permanentemente.")
-                    st.rerun()
-            with col_p2:
-                csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    label="📥 Descargar plantilla.csv",
-                    data=csv_plantilla,
-                    file_name="plantilla.csv",
-                    mime="text/csv"
+        if st.button("🎲 Generar PIN aleatorio de 4 dígitos a los que no tengan"):
+            pines_usados = set(df_plantilla["PIN"].tolist())
+            nuevos_pines = []
+            for p_actual in df_plantilla["PIN"]:
+                if len(p_actual) == 4 and p_actual.isdigit():
+                    nuevos_pines.append(p_actual)
+                else:
+                    nuevo_p = f"{random.randint(1000, 9999)}"
+                    while nuevo_p in pines_usados:
+                        nuevo_p = f"{random.randint(1000, 9999)}"
+                    pines_usados.add(nuevo_p)
+                    nuevos_pines.append(nuevo_p)
+            df_plantilla["PIN"] = nuevos_pines
+            df_plantilla.to_csv(archivo_plantilla, index=False)
+            guardar_en_github(archivo_plantilla, archivo_plantilla, "Genera PINes de asistencia en plantilla")
+            st.success("¡PINes generados y guardados en GitHub! Ya puedes repartir cada código a su familia.")
+            st.rerun()
+
+        df_plantilla_editada = st.data_editor(
+            df_plantilla,
+            num_rows="dynamic",
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Dorsal": st.column_config.NumberColumn("Dorsal", min_value=1, max_value=99, step=1),
+                "Nombre": st.column_config.TextColumn("Nombre"),
+                "Posicion": st.column_config.SelectboxColumn(
+                    "Demarcación",
+                    options=opciones_demarcacion,
+                    default="Ninguna",
+                    required=True
+                ),
+                "Estado": st.column_config.SelectboxColumn(
+                    "Estado",
+                    options=["Disponible", "Lesionado", "Sancionado"],
+                    default="Disponible",
+                    required=True
+                ),
+                "PIN": st.column_config.TextColumn(
+                    "PIN (4 dígitos)",
+                    help="Código privado de 4 cifras para confirmar asistencia",
+                    max_chars=4
                 )
-            st.divider()
+            }
+        )
 
-        # Vista pública profesional con fichas y fotos
-        filtro_pos = st.selectbox("Filtrar por demarcación:", ["Todas"] + POSICIONES_OFICIALES)
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            if st.button("💾 Guardar cambios de plantilla", type="primary"):
+                df_guardar = normalizar_plantilla(df_plantilla_editada)
+                df_guardar.to_csv(archivo_plantilla, index=False)
+                guardar_en_github(archivo_plantilla, archivo_plantilla, "Actualiza plantilla")
+                st.success(f"Plantilla guardada permanentemente ({len(df_guardar)} jugadores).")
+                st.rerun()
+        with col_p2:
+            csv_plantilla = df_plantilla_editada.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Descargar plantilla.csv",
+                data=csv_plantilla,
+                file_name="plantilla.csv",
+                mime="text/csv"
+            )
+        st.divider()
 
-        if filtro_pos != "Todas":
-            df_vista = df_plantilla[df_plantilla["Posicion"] == filtro_pos]
-        else:
-            df_vista = df_plantilla
+    posiciones_filtro = ["Todas"] + opciones_demarcacion
+    filtro_pos = st.selectbox("Filtrar por demarcación:", posiciones_filtro)
+
+    if filtro_pos != "Todas":
+        df_vista = df_plantilla[df_plantilla["Posicion"] == filtro_pos].copy()
+    else:
+        df_vista = df_plantilla.copy()
+
+    if df_vista.empty:
+        st.info("No hay jugadores registrados en esta demarcación.")
+    else:
+        df_vista["_ord"] = df_vista["Dorsal"].apply(valor_dorsal_orden)
+        df_vista = df_vista.sort_values(by=["_ord", "Nombre"])
 
         for _, jugador in df_vista.iterrows():
             icono_estado = "🟢" if jugador["Estado"] == "Disponible" else ("🔴" if jugador["Estado"] == "Lesionado" else "🟡")
+            dorsal_txt = formatear_dorsal(jugador["Dorsal"])
             avatar_html = generar_avatar_html(jugador["Nombre"], jugador["Dorsal"], mapa_fotos, tamano=64)
-            badge_dorsal = f"<span class='badge-dorsal'>Dorsal {jugador['Dorsal']}</span>" if jugador["Dorsal"] > 0 else "<span class='badge-dorsal'>Sin dorsal</span>"
-            
+
             st.markdown(f"""
             <div class="ficha-jugador">
                 <div class="ficha-izq">
                     {avatar_html}
                     <div class="ficha-info">
-                        <div class="ficha-nombre">{badge_dorsal} {jugador['Nombre']}</div>
+                        <div class="ficha-nombre"><span class="badge-dorsal">{dorsal_txt}</span> {jugador['Nombre']}</div>
                         <div class="ficha-sub">⚽ {jugador['Posicion']}</div>
                     </div>
                 </div>
@@ -664,8 +670,6 @@ elif opcion == "Plantilla":
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    else:
-        st.warning("No se encontró el archivo plantilla.csv en el repositorio.")
 
 # ======================================
 # SECCIÓN: CALENDARIO
@@ -674,139 +678,163 @@ elif opcion == "Calendario":
     st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
     st.title("📅 Calendario deportivo (2026 - 2027)")
 
-    tipos_calendario = ["Descanso", "Entrenamiento", "Partido amistoso", "Partido competición"]
+    opciones_tipo_cal = [
+        "Descanso",
+        "Entrenamiento",
+        "Partido amistoso",
+        "Partido competición"
+    ]
 
     if os.path.exists("calendario.csv"):
         df = pd.read_csv("calendario.csv")
-        df["Fecha"] = pd.to_datetime(df["Fecha"]).dt.date
-        for col_txt in ["Tipo", "Hora", "Evento", "Lugar"]:
-            if col_txt in df.columns:
-                df[col_txt] = df[col_txt].fillna("").astype(str)
+    else:
+        df = pd.DataFrame(columns=["Fecha", "Hora", "Tipo", "Evento", "Lugar"])
 
-        if es_admin:
-            with st.expander("🗓️ Planificador rápido (Generar hasta 3 meses de sesiones)", expanded=False):
-                with st.form("form_planificador_3m"):
-                    p_col1, p_col2 = st.columns(2)
-                    with p_col1:
-                        fecha_inicio_plan = st.date_input("Fecha de inicio:", value=datetime.date.today())
-                        dias_semana = st.multiselect(
-                            "Días de la semana:",
-                            options=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-                            default=["Martes", "Jueves"]
-                        )
-                        tipo_plan = st.selectbox("Tipo de actividad:", options=tipos_calendario, index=1)
-                    with p_col2:
-                        hora_plan = st.text_input("Hora (ej. 18:30):", value="18:30")
-                        evento_plan = st.text_input("Descripción / Evento:", value="Entrenamiento Infantil A")
-                        lugar_plan = st.text_input("Campo / Lugar:", value="Campo Municipal de Beniaján")
+    if not df.empty:
+        df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce").dt.date
+        df = df.dropna(subset=["Fecha"]).reset_index(drop=True)
 
-                    if st.form_submit_button("⚡ Generar y guardar planificación de 3 meses", type="primary"):
-                        mapa_dias = {"Lunes": 0, "Martes": 1, "Miércoles": 2, "Jueves": 3, "Viernes": 4, "Sábado": 5, "Domingo": 6}
-                        numeros_dias = [mapa_dias[d] for d in dias_semana]
-                        nuevas_filas = []
-                        for i in range(90):
-                            dia_actual = fecha_inicio_plan + datetime.timedelta(days=i)
-                            if dia_actual.weekday() in numeros_dias:
-                                fila_nueva = {col: "" for col in df.columns}
-                                fila_nueva["Fecha"] = dia_actual
-                                if "Hora" in df.columns: fila_nueva["Hora"] = hora_plan
-                                if "Tipo" in df.columns: fila_nueva["Tipo"] = tipo_plan
-                                if "Evento" in df.columns: fila_nueva["Evento"] = evento_plan
-                                if "Lugar" in df.columns: fila_nueva["Lugar"] = lugar_plan
-                                nuevas_filas.append(fila_nueva)
-                        if nuevas_filas:
-                            df_nuevas = pd.DataFrame(nuevas_filas)
-                            df = pd.concat([df, df_nuevas], ignore_index=True)
-                            df = df.sort_values(by="Fecha").reset_index(drop=True)
-                            df.to_csv("calendario.csv", index=False)
-                            guardar_en_github("calendario.csv", "calendario.csv", "Planificación 3 meses calendario")
-                            st.success(f"¡Se han añadido y guardado {len(nuevas_filas)} sesiones para los próximos 3 meses!")
-                            st.rerun()
-                        else:
-                            st.warning("Selecciona al menos un día de la semana.")
+    for col_txt in ["Hora", "Tipo", "Evento", "Lugar"]:
+        if col_txt in df.columns:
+            df[col_txt] = df[col_txt].fillna("").astype(str)
 
-        opciones_existentes = list(dict.fromkeys(tipos_calendario + [t for t in df["Tipo"].unique() if t]))
+    tipos_presentes = [t for t in df["Tipo"].dropna().unique().tolist() if t != "" and t not in opciones_tipo_cal]
+    todas_opciones_tipo = opciones_tipo_cal + tipos_presentes
 
-        col_filtro1, col_filtro2 = st.columns(2)
-        with col_filtro1:
-            tipo_seleccionado = st.multiselect(
-                "Filtrar por actividad:",
-                options=opciones_existentes,
-                default=opciones_existentes
-            )
+    col_filtro1, col_filtro2 = st.columns(2)
+    with col_filtro1:
+        tipo_seleccionado = st.multiselect(
+            "Filtrar por actividad:",
+            options=todas_opciones_tipo,
+            default=todas_opciones_tipo
+        )
 
-        hoy = datetime.date.today()
-        fecha_def_ini = max(datetime.date(2026, 8, 1), hoy)
-        fecha_def_fin = min(datetime.date(2027, 8, 31), hoy + datetime.timedelta(days=90))
-        if fecha_def_ini > fecha_def_fin:
-            fecha_def_ini = datetime.date(2026, 8, 1)
-            fecha_def_fin = datetime.date(2027, 8, 31)
+    hoy = datetime.date.today()
+    dentro_3_meses = hoy + datetime.timedelta(days=90)
 
-        with col_filtro2:
-            rango_fechas = st.date_input(
-                "Selecciona rango de fechas:",
-                value=(fecha_def_ini, fecha_def_fin),
-                min_value=datetime.date(2026, 8, 1),
-                max_value=datetime.date(2027, 8, 31)
-            )
+    with col_filtro2:
+        rango_fechas = st.date_input(
+            "Selecciona rango de fechas:",
+            value=(hoy, dentro_3_meses),
+            min_value=datetime.date(2026, 1, 1),
+            max_value=datetime.date(2027, 12, 31)
+        )
 
-        if len(rango_fechas) == 2:
-            inicio, fin = rango_fechas
+    if es_admin:
+        with st.expander("🗓️ Planificador rápido (Generar hasta 3 meses de sesiones)", expanded=False):
+            with st.form("form_planificador_3_meses"):
+                c_p1, c_p2 = st.columns(2)
+                with c_p1:
+                    fecha_inicio_plan = st.date_input("Fecha de inicio:", value=hoy)
+                    dias_semana = st.multiselect(
+                        "Días de la semana:",
+                        options=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+                        default=["Martes", "Jueves"]
+                    )
+                    tipo_plan = st.selectbox("Tipo de actividad:", options=opciones_tipo_cal, index=1)
+                with c_p2:
+                    meses_plan = st.selectbox("Duración a planificar:", options=[1, 2, 3], index=2, format_func=lambda m: f"{m} {'mes' if m == 1 else 'meses'} ({m*30} días)")
+                    hora_plan = st.text_input("Hora (HH:MM):", value="18:30")
+                    lugar_plan = st.text_input("Campo / Lugar:", value="Campo Municipal de Beniaján")
+                evento_plan = st.text_input("Descripción del evento:", value="Sesión de entrenamiento Infantil A")
+
+                if st.form_submit_button("📅 Generar y guardar planificación en GitHub", type="primary"):
+                    mapa_dias = {
+                        "Lunes": 0, "Martes": 1, "Miércoles": 2, "Jueves": 3,
+                        "Viernes": 4, "Sábado": 5, "Domingo": 6
+                    }
+                    dias_num = [mapa_dias[d] for d in dias_semana]
+                    nuevas_filas = []
+                    total_dias = meses_plan * 30
+                    for i in range(total_dias + 1):
+                        dia_iter = fecha_inicio_plan + datetime.timedelta(days=i)
+                        if dia_iter.weekday() in dias_num:
+                            fila_nueva = {
+                                "Fecha": dia_iter,
+                                "Hora": hora_plan.strip(),
+                                "Tipo": tipo_plan,
+                                "Evento": evento_plan.strip(),
+                                "Lugar": lugar_plan.strip()
+                            }
+                            for col_ex in df.columns:
+                                if col_ex not in fila_nueva:
+                                    fila_nueva[col_ex] = ""
+                            nuevas_filas.append(fila_nueva)
+
+                    if nuevas_filas:
+                        df_nuevas = pd.DataFrame(nuevas_filas)
+                        df_combinado = pd.concat([df, df_nuevas], ignore_index=True)
+                        df_combinado["Fecha"] = pd.to_datetime(df_combinado["Fecha"]).dt.date
+                        df_combinado = df_combinado.sort_values(by=["Fecha", "Hora"]).reset_index(drop=True)
+                        df_combinado.to_csv("calendario.csv", index=False)
+                        guardar_en_github("calendario.csv", "calendario.csv", f"Planifica {meses_plan} meses en calendario")
+                        st.success(f"¡Se han planificado y guardado {len(nuevas_filas)} sesiones para los próximos {meses_plan} meses!")
+                        st.rerun()
+                    else:
+                        st.warning("Selecciona al menos un día de la semana.")
+
+    if len(rango_fechas) == 2:
+        inicio, fin = rango_fechas
+        if not df.empty:
             mascara = (
                 (df["Tipo"].isin(tipo_seleccionado))
                 & (df["Fecha"] >= inicio)
                 & (df["Fecha"] <= fin)
             )
             df_filtrado = df[mascara]
+        else:
+            df_filtrado = df
 
-            if es_admin:
-                st.info("✏️ **Modo Entrenador:** Haz doble clic en cualquier celda para editar o añadir eventos.")
-                config_cols = {
-                    "Tipo": st.column_config.SelectboxColumn(
-                        "Tipo",
-                        options=opciones_existentes,
-                        required=True
-                    ),
-                    "Hora": st.column_config.TextColumn(
-                        "Hora",
-                        help="Formato HH:MM (ej. 19:30)"
-                    )
-                }
-                if "Evento" in df.columns:
-                    config_cols["Evento"] = st.column_config.TextColumn("Evento")
-                if "Lugar" in df.columns:
-                    config_cols["Lugar"] = st.column_config.TextColumn("Lugar")
-
-                df_editado = st.data_editor(
-                    df,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config=config_cols
+        if es_admin:
+            st.info("✏️ **Modo Entrenador:** Haz doble clic en cualquier celda (incluida la columna Evento) para escribir o editar.")
+            col_cfg = {
+                "Fecha": st.column_config.DateColumn("Fecha", format="YYYY-MM-DD", required=True),
+                "Tipo": st.column_config.SelectboxColumn(
+                    "Tipo",
+                    options=todas_opciones_tipo,
+                    required=True
+                ),
+                "Hora": st.column_config.TextColumn(
+                    "Hora",
+                    help="Formato HH:MM (ej. 19:30)"
                 )
+            }
+            if "Evento" in df.columns:
+                col_cfg["Evento"] = st.column_config.TextColumn("Evento")
+            if "Lugar" in df.columns:
+                col_cfg["Lugar"] = st.column_config.TextColumn("Lugar")
 
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button("💾 Guardar cambios de calendario", type="primary"):
-                        df_editado.to_csv("calendario.csv", index=False)
-                        guardar_en_github("calendario.csv", "calendario.csv", "Actualiza calendario")
-                        st.success("Horarios guardados permanentemente.")
-                        st.rerun()
+            df_editado = st.data_editor(
+                df,
+                num_rows="dynamic",
+                use_container_width=True,
+                hide_index=True,
+                column_config=col_cfg
+            )
 
-                with col_btn2:
-                    csv_descarga = df_editado.to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        label="📥 Descargar CSV actualizado",
-                        data=csv_descarga,
-                        file_name="calendario.csv",
-                        mime="text/csv"
-                    )
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("💾 Guardar cambios de calendario", type="primary"):
+                    df_editado.to_csv("calendario.csv", index=False)
+                    guardar_en_github("calendario.csv", "calendario.csv", "Actualiza calendario")
+                    st.success("Horarios guardados permanentemente.")
+                    st.rerun()
+
+            with col_btn2:
+                csv_descarga = df_editado.to_csv(index=False).encode("utf-8")
+                st.download_button(
+                    label="📥 Descargar CSV actualizado",
+                    data=csv_descarga,
+                    file_name="calendario.csv",
+                    mime="text/csv"
+                )
+        else:
+            if df_filtrado.empty:
+                st.info("No hay actividades programadas en el rango de fechas seleccionado.")
             else:
                 st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
-        else:
-            st.info("Selecciona una fecha de inicio y otra de fin.")
     else:
-        st.warning("No se encontró el archivo calendario.csv.")
+        st.info("Selecciona una fecha de inicio y otra de fin.")
 
 # ======================================
 # SECCIÓN: CONVOCATORIAS
@@ -829,20 +857,28 @@ elif opcion == "Convocatorias":
         with open(archivo_conv, "r", encoding="utf-8") as f:
             datos_conv = json.load(f)
 
+    mapa_pines = {}
     df_pl = pd.DataFrame()
     if os.path.exists(archivo_plantilla):
         df_pl = normalizar_plantilla(pd.read_csv(archivo_plantilla))
+        for _, fila in df_pl.iterrows():
+            nombre_etiqueta = f"{formatear_dorsal(fila['Dorsal'])} - {fila['Nombre']} ({fila['Posicion']})"
+            mapa_pines[nombre_etiqueta] = fila["PIN"]
 
     if es_admin:
         with st.expander("✏️ Configurar nueva convocatoria (Solo Entrenador)", expanded=True):
             if not df_pl.empty:
-                df_disp = df_pl[~df_pl["Estado"].isin(["Lesionado", "Sancionado"])]
-                st.caption(f"Jugadores cargados desde plantilla: {len(df_pl)} totales · {len(df_disp)} disponibles")
-                
+                estados_baja = ["lesionado", "sancionado"]
+                df_disp = df_pl[~df_pl["Estado"].str.lower().isin(estados_baja)].copy()
+                df_disp["_orden_dorsal"] = df_disp["Dorsal"].apply(valor_dorsal_orden)
+                df_disp = df_disp.sort_values(by=["_orden_dorsal", "Nombre"])
+
                 opciones_jugadores = [
-                    (f"Dorsal {fila['Dorsal']} - {fila['Nombre']} ({fila['Posicion']})" if fila["Dorsal"] > 0 else f"Sin dorsal - {fila['Nombre']} ({fila['Posicion']})")
+                    f"{formatear_dorsal(fila['Dorsal'])} - {fila['Nombre']} ({fila['Posicion']})"
                     for _, fila in df_disp.iterrows()
                 ]
+
+                st.caption(f"Jugadores cargados desde plantilla: {len(df_pl)} totales · {len(opciones_jugadores)} disponibles para convocar.")
 
                 nombres_previos = [
                     c["jugador"]
@@ -894,7 +930,7 @@ elif opcion == "Convocatorias":
                         st.success("¡Convocatoria publicada y guardada!")
                         st.rerun()
             else:
-                st.warning("Primero debes crear el archivo plantilla.csv para elegir jugadores.")
+                st.warning("Primero debes añadir jugadores en la sección Plantilla y pulsar 'Guardar cambios de plantilla'.")
 
     if not datos_conv["convocados"]:
         st.info("Todavía no se ha publicado la convocatoria para el próximo partido.")
@@ -927,7 +963,7 @@ elif opcion == "Convocatorias":
         with st.container(border=True):
             st.markdown("### 🙋‍♂️ Confirmar asistencia del jugador")
             lista_nombres = [c["jugador"] for c in datos_conv["convocados"]]
-            
+
             if es_admin:
                 col_sel1, col_sel2, col_sel3 = st.columns([2, 2, 1])
                 with col_sel1:
@@ -943,33 +979,26 @@ elif opcion == "Convocatorias":
                                 item["estado"] = nuevo_estado
                         with open(archivo_conv, "w", encoding="utf-8") as f:
                             json.dump(datos_conv, f, ensure_ascii=False, indent=4)
-                        guardar_en_github(archivo_conv, archivo_conv, f"Asistencia: {jugador_elegido}")
+                        guardar_en_github(archivo_conv, archivo_conv, f"Asistencia (Entrenador): {jugador_elegido}")
                         st.success(f"Estado actualizado para {jugador_elegido}")
                         st.rerun()
             else:
-                col_sel1, col_sel2, col_pin, col_sel3 = st.columns([2, 1.5, 1.2, 1.3])
+                col_sel1, col_sel2, col_sel3, col_sel4 = st.columns([2.2, 1.8, 1.2, 1.2])
                 with col_sel1:
-                    jugador_elegido = st.selectbox("Selecciona tu nombre:", options=lista_nombres)
+                    jugador_elegido = st.selectbox("1. Selecciona tu dorsal y nombre:", options=lista_nombres)
                 with col_sel2:
-                    nuevo_estado = st.selectbox("Respuesta:", options=["✅ Confirmado", "❌ No puede asistir", "⏳ Pendiente"])
-                with col_pin:
-                    pin_introducido = st.text_input("PIN (4 cifras):", type="password", max_chars=4)
+                    nuevo_estado = st.selectbox("2. ¿Asistes al partido?", options=["✅ Confirmado", "❌ No puede asistir", "⏳ Pendiente"])
                 with col_sel3:
+                    pin_introducido = st.text_input("3. Tu PIN (4 cifras):", type="password", max_chars=4)
+                with col_sel4:
                     st.write("")
                     st.write("")
                     if st.button("Confirmar", type="primary"):
-                        pin_correcto = ""
-                        if not df_pl.empty:
-                            for _, r in df_pl.iterrows():
-                                etiqueta_r = f"Dorsal {r['Dorsal']} - {r['Nombre']} ({r['Posicion']})" if r["Dorsal"] > 0 else f"Sin dorsal - {r['Nombre']} ({r['Posicion']})"
-                                if etiqueta_r == jugador_elegido or str(r["Nombre"]) in jugador_elegido:
-                                    pin_correcto = str(r["PIN"]).strip()
-                                    break
-                        
-                        if pin_correcto and pin_introducido.strip() != pin_correcto:
-                            st.error("❌ PIN incorrecto. Revisa el código de 4 dígitos de tu jugador.")
-                        elif not pin_correcto and pin_introducido.strip() == "":
-                            st.warning("Introduce el PIN de 4 dígitos asignado por el entrenador.")
+                        pin_correcto = mapa_pines.get(jugador_elegido, "")
+                        if not pin_correcto:
+                            st.error("Este jugador aún no tiene PIN asignado. Pídeselo al entrenador.")
+                        elif pin_introducido.strip() != pin_correcto:
+                            st.error("❌ PIN incorrecto. Revisa tu código de 4 cifras.")
                         else:
                             for item in datos_conv["convocados"]:
                                 if item["jugador"] == jugador_elegido:
@@ -983,20 +1012,20 @@ elif opcion == "Convocatorias":
         st.subheader("Lista oficial de convocados")
         for item in datos_conv["convocados"]:
             texto_jug = item["jugador"]
-            dorsal_encontrado = 0
-            nombre_encontrado = texto_jug
-            
+            dorsal_val = ""
+            nombre_val = texto_jug
+
             m_dorsal = re.search(r"Dorsal\s+(\d+)\s*-\s*([^(]+)", texto_jug)
             if m_dorsal:
-                dorsal_encontrado = int(m_dorsal.group(1))
-                nombre_encontrado = m_dorsal.group(2).strip()
+                dorsal_val = int(m_dorsal.group(1))
+                nombre_val = m_dorsal.group(2).strip()
             else:
                 m_sin = re.search(r"Sin dorsal\s*-\s*([^(]+)", texto_jug)
                 if m_sin:
-                    nombre_encontrado = m_sin.group(1).strip()
+                    nombre_val = m_sin.group(1).strip()
 
-            avatar_conv = generar_avatar_html(nombre_encontrado, dorsal_encontrado, mapa_fotos, tamano=54)
-            
+            avatar_conv = generar_avatar_html(nombre_val, dorsal_val, mapa_fotos, tamano=54)
+
             st.markdown(f"""
             <div class="ficha-jugador">
                 <div class="ficha-izq">
@@ -1126,7 +1155,7 @@ elif opcion == "Galería":
     with st.expander("📤 Subir una nueva foto del equipo", expanded=False):
         with st.form("form_subir_foto", clear_on_submit=True):
             archivo_subido = st.file_uploader(
-                "Selecciona una imagen desde tu galería o cámara:"
+                "Selecciona una fotografía de tu galería:"
             )
             titulo_foto = st.text_input(
                 "Título o jornada (ej. Victoria vs Murcia C.F. - Jornada 3):"
@@ -1142,12 +1171,13 @@ elif opcion == "Galería":
                 elif titulo_foto.strip() == "":
                     st.warning("Escribe un breve título para identificar la foto.")
                 else:
-                    ext = os.path.splitext(archivo_subido.name)[1].lower()
-                    if ext not in [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]:
-                        st.error("Formato no compatible. Por favor, sube una imagen (JPG, PNG, WEBP o HEIC).")
+                    extension = os.path.splitext(archivo_subido.name)[1].lower()
+                    extensiones_validas = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"]
+                    if extension not in extensiones_validas:
+                        st.error("Formato no compatible. Por favor, selecciona una imagen (JPG, PNG, WEBP o HEIC).")
                     else:
                         marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                        nombre_limpio = limpiar_nombre_archivo(archivo_subido.name)
+                        nombre_limpio = re.sub(r"[^a-zA-Z0-9._-]", "_", archivo_subido.name)
                         nombre_archivo = f"{marca_tiempo}_{nombre_limpio}"
                         ruta_guardado = os.path.join(carpeta_fotos, nombre_archivo)
 
@@ -1195,15 +1225,20 @@ elif opcion == "Galería":
 
                         with open(ruta_img, "rb") as file_dl:
                             bytes_img = file_dl.read()
+                        ext_img = os.path.splitext(foto["archivo"])[1].lower()
+                        mime_img = "image/png" if ext_img == ".png" else ("image/webp" if ext_img == ".webp" else "image/jpeg")
+
                         st.download_button(
                             label="📥 Descargar foto",
                             data=bytes_img,
                             file_name=foto["archivo"],
-                            key=f"dl_foto_{indice}"
+                            mime=mime_img,
+                            key=f"dl_foto_{indice}",
+                            use_container_width=True
                         )
 
                         if es_admin:
-                            if st.button("🗑️ Eliminar", key=f"del_foto_{indice}"):
+                            if st.button("🗑️ Eliminar", key=f"del_foto_{indice}", use_container_width=True):
                                 if os.path.exists(ruta_img):
                                     os.remove(ruta_img)
 
