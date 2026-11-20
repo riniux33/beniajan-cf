@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 import datetime
+from zoneinfo import ZoneInfo
 import json
 import os
 import re
 import random
 import base64
-import time
 from PIL import Image, ImageOps
 from github import Github
 
@@ -42,45 +42,9 @@ def imagen_a_base64(ruta_img):
             return base64.b64encode(f.read()).decode("utf-8")
     return None
 
-# ======================================
-# GESTIÓN DE CARRUSEL DE INICIO (HASTA 21 FOTOS)
-# ======================================
-CARPETA_CARRUSEL = "carrusel_inicio"
-ARCHIVO_CARRUSEL = "carrusel_inicio.json"
-MAX_FOTOS_CARRUSEL = 21
-
-def cargar_datos_carrusel():
-    if os.path.exists(ARCHIVO_CARRUSEL):
-        try:
-            with open(ARCHIVO_CARRUSEL, "r", encoding="utf-8") as f:
-                datos = json.load(f)
-                datos.sort(key=lambda x: int(x.get("orden", 999)))
-                return datos
-        except Exception:
-            return []
-    return []
-
-def guardar_datos_carrusel(lista):
-    lista_ordenada = sorted(lista, key=lambda x: int(x.get("orden", 999)))
-    for idx, item in enumerate(lista_ordenada, start=1):
-        item["orden"] = idx
-    with open(ARCHIVO_CARRUSEL, "w", encoding="utf-8") as f:
-        json.dump(lista_ordenada, f, ensure_ascii=False, indent=4)
-    guardar_en_github(ARCHIVO_CARRUSEL, ARCHIVO_CARRUSEL, "Actualiza orden del carrusel de inicio")
-    return lista_ordenada
-
-def procesar_foto_carrusel(archivo_subido):
-    if not os.path.exists(CARPETA_CARRUSEL):
-        os.makedirs(CARPETA_CARRUSEL)
-    img = Image.open(archivo_subido)
-    img = ImageOps.exif_transpose(img).convert("RGB")
-    img_opt = ImageOps.fit(img, (1200, 675), method=Image.Resampling.LANCZOS, centering=(0.5, 0.35))
-    marca = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    nombre_archivo = f"slide_{marca}.jpg"
-    ruta_local = os.path.join(CARPETA_CARRUSEL, nombre_archivo)
-    img_opt.save(ruta_local, format="JPEG", quality=86)
-    guardar_en_github(ruta_local, f"{CARPETA_CARRUSEL}/{nombre_archivo}", f"Añade foto al carrusel: {nombre_archivo}")
-    return nombre_archivo
+def obtener_hora_espana():
+    ahora_es = datetime.datetime.now(ZoneInfo("Europe/Madrid"))
+    return ahora_es.strftime("🕒 %d/%m · %H:%M")
 
 # ======================================
 # GESTIÓN DE FOTOS DE JUGADORES
@@ -196,9 +160,6 @@ st.set_page_config(
 if "seccion_actual" not in st.session_state:
     st.session_state.seccion_actual = "Inicio"
 
-if "carrusel_idx" not in st.session_state:
-    st.session_state.carrusel_idx = 0
-
 def ir_a(seccion):
     st.session_state.seccion_actual = seccion
 
@@ -270,237 +231,110 @@ st.markdown("""
     margin-right: 6px;
     display: inline-block;
 }
-.carrusel-pie-bar {
-    background-color: #172033;
-    color: #ffffff;
-    padding: 9px 16px;
-    border-radius: 0 0 15px 15px;
+.estado-conv-box {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 13.5px;
-    margin-bottom: 8px;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+    white-space: nowrap;
 }
-.carrusel-badge {
-    background-color: #ffcc00;
-    color: #172033;
-    font-weight: 800;
-    padding: 2px 10px;
-    border-radius: 999px;
-    font-size: 12px;
+.hora-confirmacion {
+    font-size: 11.5px;
+    color: #5c667a;
+    font-weight: 500;
+    margin-top: 3px;
 }
 div[data-testid="stButton"] > button[kind="secondary"] {
     background-color: white;
     border: 1px solid #d6d9e0;
     border-radius: 12px;
-padding: 20px 14px;
-min-height: 105px;
-color: #172033;
-font-size: 16px;
-box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-transition: all 0.2s ease;
+    padding: 20px 14px;
+    min-height: 105px;
+    color: #172033;
+    font-size: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
 }
 div[data-testid="stButton"] > button[kind="secondary"]:hover {
-border-color: #172033;
-background-color: #eef1f6;
-transform: translateY(-2px);
+    border-color: #172033;
+    background-color: #eef1f6;
+    transform: translateY(-2px);
 }
-
+</style>
 """, unsafe_allow_html=True)
 
-======================================
-
-
-3. ENCABEZADO SUPERIOR CON ESCUDO
-
-
-======================================
-
+# ======================================
+# 3. ENCABEZADO SUPERIOR CON ESCUDO
+# ======================================
 col1, col2 = st.columns([1, 4])
+
 with col1:
-if os.path.exists("escudo.png.png"):
-st.image("escudo.png.png", width=100)
-elif os.path.exists("escudo.png"):
-st.image("escudo.png", width=100)
-else:
-st.markdown("# ⚽")
+    if os.path.exists("escudo.png.png"):
+        st.image("escudo.png.png", width=100)
+    elif os.path.exists("escudo.png"):
+        st.image("escudo.png", width=100)
+    else:
+        st.markdown("# ⚽")
+
 with col2:
-st.title("Beniaján C.F.")
-st.subheader("Infantil A · Temporada 2026/2027")
+    st.title("Beniaján C.F.")
+    st.subheader("Infantil A · Temporada 2026/2027")
 
-======================================
-
-
-4. MENÚ LATERAL Y CONTRASEÑA
-
-
-======================================
-
+# ======================================
+# 4. MENÚ LATERAL Y CONTRASEÑA
+# ======================================
 st.sidebar.title("⚽ BENIAJÁN C.F.")
 st.sidebar.markdown("### Menú principal")
+
 secciones = [
-"Inicio",
-"Plantilla",
-"Calendario",
-"Convocatorias",
-"Comunicados",
-"Galería"
+    "Inicio",
+    "Plantilla",
+    "Calendario",
+    "Convocatorias",
+    "Comunicados",
+    "Galería"
 ]
+
 opcion = st.sidebar.radio(
-"Selecciona una sección:",
-secciones,
-key="seccion_actual"
+    "Selecciona una sección:",
+    secciones,
+    key="seccion_actual"
 )
+
 st.sidebar.divider()
 st.sidebar.subheader("🔒 Acceso Cuerpo Técnico")
 clave_introducida = st.sidebar.text_input("Contraseña de edición:", type="password")
+
 es_admin = False
 if clave_introducida:
-if "password_entrenador" in st.secrets and clave_introducida == st.secrets["password_entrenador"]:
-es_admin = True
-st.sidebar.success("Modo edición activado")
-else:
-st.sidebar.error("Contraseña incorrecta")
+    if "password_entrenador" in st.secrets and clave_introducida == st.secrets["password_entrenador"]:
+        es_admin = True
+        st.sidebar.success("Modo edición activado")
+    else:
+        st.sidebar.error("Contraseña incorrecta")
+
 st.sidebar.divider()
 st.sidebar.caption("Temporada 2026/2027")
 st.sidebar.caption("Aplicación del equipo")
 
-======================================
-
-
-PANTALLA DE INICIO
-
-
-======================================
-
+# ======================================
+# PANTALLA DE INICIO
+# ======================================
 if opcion == "Inicio":
-slides_carrusel = cargar_datos_carrusel()
-slides_validos = [
-s for s in slides_carrusel
-if os.path.exists(os.path.join(CARPETA_CARRUSEL, s.get("archivo", "")))
-]
-if es_admin:
-with st.expander(f"🎞️ Gestionar pase de fotos del cartel principal ({len(slides_validos)}/{MAX_FOTOS_CARRUSEL} fotos)", expanded=False):
-if len(slides_validos) < MAX_FOTOS_CARRUSEL:
-with st.form("form_subir_carrusel", clear_on_submit=True):
-st.markdown("➕ Añadir nueva fotografía al pase del cartel")
-foto_slide = st.file_uploader(
-"Selecciona imagen (se optimizará automáticamente a 1200×675 px):",
-type=["jpg", "jpeg", "png", "webp"]
-)
-col_s1, col_s2 = st.columns([1, 2])
-with col_s1:
-pos_defecto = len(slides_validos) + 1
-posicion_nueva = st.selectbox(
-"Posición en el pase (1 a 21):",
-options=list(range(1, MAX_FOTOS_CARRUSEL + 1)),
-index=min(pos_defecto - 1, MAX_FOTOS_CARRUSEL - 1)
-)
-with col_s2:
-pie_nuevo = st.text_input("Pie de foto opcional (ej. Once inicial vs Murcia):")
-if st.form_submit_button("📤 Subir foto al carrusel", type="primary"):
-if foto_slide is None:
-st.warning("Selecciona primero una fotografía.")
-else:
-nombre_arch = procesar_foto_carrusel(foto_slide)
-nuevo_item = {
-"archivo": nombre_arch,
-"pie": pie_nuevo.strip(),
-"orden": int(posicion_nueva)
-}
-lista_act = list(slides_validos)
-idx_insertar = max(0, min(int(posicion_nueva) - 1, len(lista_act)))
-lista_act.insert(idx_insertar, nuevo_item)
-guardar_datos_carrusel(lista_act)
-st.session_state.carrusel_idx = idx_insertar
-st.success("¡Fotografía añadida al cartel principal!")
-st.rerun()
-else:
-st.info("Has alcanzado el máximo de 21 fotografías. Elimina alguna para subir otra.")
-if slides_validos:
-st.divider()
-st.markdown("🔢 Reordenar o eliminar fotos actuales del cartel")
-nuevos_ordenes = {}
-for idx_s, s_item in enumerate(slides_validos):
-ruta_thumb = os.path.join(CARPETA_CARRUSEL, s_item["archivo"])
-c_th1, c_th2, c_th3, c_th4 = st.columns([1.2, 2.5, 1.3, 1])
-with c_th1:
-st.image(ruta_thumb, use_container_width=True)
-with c_th2:
-texto_pie = s_item.get("pie") if s_item.get("pie") else "Sin pie de foto"
-st.markdown(f"Foto #{idx_s + 1} · {texto_pie}")
-st.caption(s_item["archivo"])
-with c_th3:
-nuevos_ordenes[idx_s] = st.selectbox(
-"Orden:",
-options=list(range(1, len(slides_validos) + 1)),
-index=idx_s,
-key=f"ord_slide_{s_item['archivo']}"
-)
-with c_th4:
-st.write("")
-if st.button("🗑️", key=f"del_slide_{s_item['archivo']}", help="Eliminar foto del carrusel"):
-if os.path.exists(ruta_thumb):
-os.remove(ruta_thumb)
-borrar_en_github(
-f"{CARPETA_CARRUSEL}/{s_item['archivo']}",
-f"Elimina foto de carrusel: {s_item['archivo']}"
-)
-restantes = [x for i, x in enumerate(slides_validos) if i != idx_s]
-guardar_datos_carrusel(restantes)
-st.session_state.carrusel_idx = 0
-st.success("Foto eliminada.")
-st.rerun()
-if st.button("💾 Guardar nuevo orden del pase", type="primary"):
-reordenada = []
-for idx_s, s_item in enumerate(slides_validos):
-copia = dict(s_item)
-copia["orden"] = (nuevos_ordenes[idx_s], idx_s)
-reordenada.append(copia)
-reordenada.sort(key=lambda x: x["orden"])
-guardar_datos_carrusel(reordenada)
-st.session_state.carrusel_idx = 0
-st.success("¡Orden del pase de fotos actualizado!")
-st.rerun()
-# Cartel principal interactivo (Carrusel si hay fotos; si no, foto_portada.jpg)
 foto_portada = "equipo_portada.jpg"
-if slides_validos:
-total_slides = len(slides_validos)
-if st.session_state.carrusel_idx >= total_slides or st.session_state.carrusel_idx < 0:
-st.session_state.carrusel_idx = 0
-slide_actual = slides_validos[st.session_state.carrusel_idx]
-ruta_slide_actual = os.path.join(CARPETA_CARRUSEL, slide_actual["archivo"])
-b64_slide = imagen_a_base64(ruta_slide_actual)
-pie_texto = slide_actual.get("pie", "").strip()
-pie_html = f"📷 {pie_texto}" if pie_texto else "⚽ Beniaján C.F. · Infantil A"
-st.markdown(f"""
-
-BENIAJÁN C.F.
-Aplicación oficial de nuestro equipo - Infantil A · Temporada 2026/2027
-
-
-{pie_html}
-Foto {st.session_state.carrusel_idx + 1} de {total_slides}
-
-""", unsafe_allow_html=True)
-c_nav1, c_nav2, c_nav3 = st.columns([1, 1.3, 1])
-with c_nav1:
-if st.button("⬅️ Anterior", use_container_width=True, key="btn_carrusel_prev"):
-st.session_state.carrusel_idx = (st.session_state.carrusel_idx - 1) % total_slides
+if es_admin:
+with st.expander("🖼️ Cambiar foto de fondo del cartel principal"):
+nueva_portada = st.file_uploader("Sube una foto horizontal del equipo:")
+if st.button("💾 Guardar foto de portada", type="primary"):
+if nueva_portada is not None:
+with open(foto_portada, "wb") as f:
+f.write(nueva_portada.getbuffer())
+guardar_en_github(foto_portada, foto_portada, "Actualiza foto de portada del equipo")
+st.success("¡Foto de portada actualizada!")
 st.rerun()
-with c_nav2:
-pase_auto = st.toggle("▶️ Pase automático (4s)", value=False, key="toggle_carrusel_auto")
-with c_nav3:
-if st.button("Siguiente ➡️", use_container_width=True, key="btn_carrusel_next"):
-st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % total_slides
-st.rerun()
-if pase_auto and total_slides > 1:
-time.sleep(4)
-st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % total_slides
-st.rerun()
-elif os.path.exists(foto_portada):
+else:
+st.warning("Selecciona primero una imagen.")
+if os.path.exists(foto_portada):
 with open(foto_portada, "rb") as img_f:
 b64_img = base64.b64encode(img_f.read()).decode()
 st.markdown(f"""
@@ -997,15 +831,17 @@ options=opciones_jugadores,
 default=nombres_previos
 )
 if st.form_submit_button("📢 Publicar Convocatoria Oficial", type="primary"):
-estados_previos = {
-c["jugador"]: c["estado"]
+previos_map = {
+c["jugador"]: c
 for c in datos_conv["convocados"]
 }
 nueva_lista = []
 for jug in seleccionados:
+dato_prev = previos_map.get(jug, {})
 nueva_lista.append({
 "jugador": jug,
-"estado": estados_previos.get(jug, "⏳ Pendiente")
+"estado": dato_prev.get("estado", "⏳ Pendiente"),
+"hora_confirmacion": dato_prev.get("hora_confirmacion", "")
 })
 datos_conv = {
 "partido": titulo_partido,
@@ -1060,13 +896,15 @@ with col_sel3:
 st.write("")
 st.write("")
 if st.button("Guardar respuesta", type="primary"):
+sello_hora = obtener_hora_espana()
 for item in datos_conv["convocados"]:
 if item["jugador"] == jugador_elegido:
 item["estado"] = nuevo_estado
+item["hora_confirmacion"] = sello_hora if nuevo_estado != "⏳ Pendiente" else ""
 with open(archivo_conv, "w", encoding="utf-8") as f:
 json.dump(datos_conv, f, ensure_ascii=False, indent=4)
 guardar_en_github(archivo_conv, archivo_conv, f"Asistencia (Entrenador): {jugador_elegido}")
-st.success(f"Estado actualizado para {jugador_elegido}")
+st.success(f"Estado actualizado para {jugador_elegido} ({sello_hora})")
 st.rerun()
 else:
 col_sel1, col_sel2, col_sel3, col_sel4 = st.columns([2.2, 1.8, 1.2, 1.2])
@@ -1086,13 +924,15 @@ st.error("Este jugador aún no tiene PIN asignado. Pídeselo al entrenador.")
 elif pin_introducido.strip() != pin_correcto:
 st.error("❌ PIN incorrecto. Revisa tu código de 4 cifras.")
 else:
+sello_hora = obtener_hora_espana()
 for item in datos_conv["convocados"]:
 if item["jugador"] == jugador_elegido:
 item["estado"] = nuevo_estado
+item["hora_confirmacion"] = sello_hora if nuevo_estado != "⏳ Pendiente" else ""
 with open(archivo_conv, "w", encoding="utf-8") as f:
 json.dump(datos_conv, f, ensure_ascii=False, indent=4)
 guardar_en_github(archivo_conv, archivo_conv, f"Asistencia: {jugador_elegido}")
-st.success(f"¡Asistencia guardada para {jugador_elegido}!")
+st.success(f"¡Asistencia guardada para {jugador_elegido}! ({sello_hora})")
 st.rerun()
 st.subheader("Lista oficial de convocados")
 for item in datos_conv["convocados"]:
@@ -1108,6 +948,8 @@ m_sin = re.search(r"Sin dorsal\s*-\s*([^(]+)", texto_jug)
 if m_sin:
 nombre_enc = m_sin.group(1).strip()
 avatar_conv = generar_avatar_html(nombre_enc, dorsal_enc, mapa_fotos, tamano=54)
+hora_conf = item.get("hora_confirmacion", "").strip()
+html_hora = f'{hora_conf}' if hora_conf else ""
 st.markdown(f"""
 
 
@@ -1117,7 +959,10 @@ st.markdown(f"""
 
 
 
+
 {item['estado']}
+
+{html_hora}
 
 
 """, unsafe_allow_html=True)
@@ -1338,5 +1183,3 @@ st.caption(
 "BENIAJÁN C.F. - Infantil A | Aplicación de gestión y comunicación "
 "| Temporada 2026/2027"
 )
-    
-   
