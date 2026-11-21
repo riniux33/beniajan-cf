@@ -596,51 +596,65 @@ st.markdown(f"""
 
 """, unsafe_allow_html=True)
 # Contadores para los accesos rápidos
-num_jugadores = 0
-if os.path.exists("plantilla.csv"):
-df_tmp_pl = normalizar_plantilla(pd.read_csv("plantilla.csv"))
-num_jugadores = len(df_tmp_pl)
-num_convocados = 0
-num_pendientes = 0
-if os.path.exists("convocatoria_actual.json"):
-with open("convocatoria_actual.json", "r", encoding="utf-8") as f:
-d_conv_tmp = json.load(f)
-num_convocados = len(d_conv_tmp.get("convocados", []))
-num_pendientes = sum(1 for c in d_conv_tmp.get("convocados", []) if c.get("estado") == "⏳ Pendiente")
-num_mensajes = 0
-if os.path.exists("comunicados.csv"):
-num_mensajes = len(pd.read_csv("comunicados.csv"))
-num_fotos = 0
-if os.path.exists("galeria_datos.json"):
-with open("galeria_datos.json", "r", encoding="utf-8") as f:
-num_fotos = len(json.load(f))
-st.subheader("Accesos rápidos")
-col1, col2, col3 = st.columns(3)
-with col1:
-texto_plantilla = f"👥 Plantilla ({num_jugadores})\n\nConsulta los jugadores del equipo"
-st.button(texto_plantilla, use_container_width=True, on_click=ir_a, args=("Plantilla",))
-with col2:
-texto_calendario = "📅 Calendario\n\nPartidos y entrenamientos"
-st.button(texto_calendario, use_container_width=True, on_click=ir_a, args=("Calendario",))
-with col3:
-aviso_pend = f" · {num_pendientes} pend. 🔔" if num_pendientes > 0 else ""
-texto_conv = f"📋 Convocatorias ({num_convocados}{aviso_pend})\n\nConsulta y confirma asistencia"
-st.button(texto_conv, use_container_width=True, on_click=ir_a, args=("Convocatorias",))
-col4, col5, col6 = st.columns(3)
-with col4:
-texto_com = f"📢 Comunicados ({num_mensajes})\n\nNoticias y avisos del entrenador"
-st.button(texto_com, use_container_width=True, on_click=ir_a, args=("Comunicados",))
-with col5:
-texto_gal = f"📸 Galería ({num_fotos})\n\nFotos y recuerdos del equipo"
-st.button(texto_gal, use_container_width=True, on_click=ir_a, args=("Galería",))
-with col6:
-if st.button("🔒 Cuerpo Técnico\n\nAcceso edición en menú lateral", use_container_width=True):
-st.info("Pulsa la flecha > arriba a la izquierda para abrir el menú lateral e introducir la contraseña de entrenador.")
-# Pase automático cada 4 segundos cuando está activado
-if slides_validos and len(slides_validos) > 1 and st.session_state.carrusel_auto:
-time.sleep(4)
-st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % len(slides_validos)
-st.rerun()
+    # Contadores para los accesos rápidos
+    num_jugadores = 0
+    if os.path.exists("plantilla.csv"):
+        df_tmp_pl = normalizar_plantilla(pd.read_csv("plantilla.csv"))
+        num_jugadores = len(df_tmp_pl)
+
+    num_convocados = 0
+    num_pendientes = 0
+    if os.path.exists("convocatoria_actual.json"):
+        with open("convocatoria_actual.json", "r", encoding="utf-8") as f:
+            d_conv_tmp = json.load(f)
+            num_convocados = len(d_conv_tmp.get("convocados", []))
+            num_pendientes = sum(1 for c in d_conv_tmp.get("convocados", []) if c.get("estado") == "⏳ Pendiente")
+
+    num_mensajes = 0
+    if os.path.exists("comunicados.csv"):
+        num_mensajes = len(pd.read_csv("comunicados.csv"))
+
+    num_fotos = 0
+    if os.path.exists("galeria_datos.json"):
+        with open("galeria_datos.json", "r", encoding="utf-8") as f:
+            num_fotos = len(json.load(f))
+
+    st.subheader("Accesos rápidos")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        texto_plantilla = f"👥 **Plantilla ({num_jugadores})**\n\nConsulta los jugadores del equipo"
+        st.button(texto_plantilla, use_container_width=True, on_click=ir_a, args=("Plantilla",))
+
+    with col2:
+        texto_calendario = "📅 **Calendario**\n\nPartidos y entrenamientos"
+        st.button(texto_calendario, use_container_width=True, on_click=ir_a, args=("Calendario",))
+
+    with col3:
+        aviso_pend = f" · {num_pendientes} pend. 🔔" if num_pendientes > 0 else ""
+        texto_conv = f"📋 **Convocatorias ({num_convocados}{aviso_pend})**\n\nConsulta y confirma asistencia"
+        st.button(texto_conv, use_container_width=True, on_click=ir_a, args=("Convocatorias",))
+
+    col4, col5, col6 = st.columns(3)
+
+    with col4:
+        texto_com = f"📢 **Comunicados ({num_mensajes})**\n\nNoticias y avisos del entrenador"
+        st.button(texto_com, use_container_width=True, on_click=ir_a, args=("Comunicados",))
+
+    with col5:
+        texto_gal = f"📸 **Galería ({num_fotos})**\n\nFotos y recuerdos del equipo"
+        st.button(texto_gal, use_container_width=True, on_click=ir_a, args=("Galería",))
+
+    with col6:
+        if st.button("🔒 **Cuerpo Técnico**\n\nAcceso edición en menú lateral", use_container_width=True):
+            st.info("Pulsa la flecha **`>`** arriba a la izquierda para abrir el menú lateral e introducir la contraseña de entrenador.")
+
+    # Pase automático cada 4 segundos cuando está activado
+    if slides_validos and len(slides_validos) > 1 and st.session_state.carrusel_auto:
+        time.sleep(4)
+        st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % len(slides_validos)
+        st.rerun()
 
 # ======================================
 # PLANTILLA
