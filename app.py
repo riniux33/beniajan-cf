@@ -338,7 +338,7 @@ transform: translateY(-2px);
 
 with col1:
     if os.path.exists("escudo.png.png"):
-        st.image("escudo.png.png", width=100)
+       st.image("escudo.png.png", width=100)
     elif os.path.exists("escudo.png"):
         st.image("escudo.png", width=100)
     else:
