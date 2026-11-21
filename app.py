@@ -349,9 +349,9 @@ with col2:
     st.subheader("Infantil A · Temporada 2026/2027")
 
 
-======================================
-4. MENÚ LATERAL Y CONTRASEÑA
-======================================
+# ======================================
+# 4. MENÚ LATERAL Y CONTRASEÑA
+# ======================================
     
 st.sidebar.title("⚽ BENIAJÁN C.F.")
 st.sidebar.markdown("### Menú principal")
@@ -607,9 +607,9 @@ time.sleep(4)
 st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % len(slides_validos)
 st.rerun()
 
-======================================
-PLANTILLA
-======================================
+# ======================================
+# PLANTILLA
+# ======================================
 
 elif opcion == "Plantilla":
 st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
@@ -769,9 +769,9 @@ st.markdown(f"""
 
 """, unsafe_allow_html=True)
 
-======================================
-SECCIÓN: CALENDARIO
-======================================
+# ======================================
+# SECCIÓN: CALENDARIO
+# ======================================
 
 elif opcion == "Calendario":
 st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
@@ -919,9 +919,9 @@ st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
 else:
 st.info("Selecciona una fecha de inicio y otra de fin.")
 
-======================================
-SECCIÓN: CONVOCATORIAS
-======================================
+# ======================================
+# SECCIÓN: CONVOCATORIAS
+# ======================================
 
 elif opcion == "Convocatorias":
 st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
@@ -1098,9 +1098,9 @@ st.markdown(f"""
 
 """, unsafe_allow_html=True)
 
-======================================
-SECCIÓN: COMUNICADOS
-======================================
+# ======================================
+# SECCIÓN: COMUNICADOS
+# ======================================
 
 elif opcion == "Comunicados":
 st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
@@ -1184,9 +1184,9 @@ file_name="comunicados.csv",
 mime="text/csv"
 )
 
-======================================
-SECCIÓN: GALERÍA DE FOTOGRAFÍAS
-======================================
+# ======================================
+# SECCIÓN: GALERÍA DE FOTOGRAFÍAS
+# ======================================
 
 elif opcion == "Galería":
 st.button("⬅️ Volver a Inicio", on_click=ir_a, args=("Inicio",))
@@ -1293,9 +1293,9 @@ archivo_registro,
 st.success("Foto eliminada.")
 st.rerun()
 
-======================================
-PIE DE PÁGINA
-======================================
+# ======================================
+# PIE DE PÁGINA
+# ======================================
 
 st.divider()
 st.caption(
