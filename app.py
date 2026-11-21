@@ -573,18 +573,18 @@ if opcion == "Inicio":
                 nuevo_campo = st.text_input("Campo:", value=datos_partido["campo"])
                 nueva_citacion = st.text_input("Hora de citación:", value=datos_partido["citacion"])
 
-     if st.form_submit_button("💾 Actualizar cartel", type="primary"):
-         datos_partido = {
-             "encuentro": nuevo_encuentro,
-             "fecha_hora": nueva_fecha,
-             "campo": nuevo_campo,
-             "citacion": nueva_citacion
+                if st.form_submit_button("💾 Actualizar cartel", type="primary"):
+                    datos_partido = {
+                        "encuentro": nuevo_encuentro,
+                        "fecha_hora": nueva_fecha,
+                        "campo": nuevo_campo,
+                        "citacion": nueva_citacion
                     }
-         with open(archivo_partido, "w", encoding="utf-8") as f:
-             json.dump(datos_partido, f, ensure_ascii=False, indent=4)
-         guardar_en_github(archivo_partido, archivo_partido, "Actualiza próximo partido")
-         st.success("¡Cartel actualizado y guardado!")
-         st.rerun()
+                    with open(archivo_partido, "w", encoding="utf-8") as f:
+                        json.dump(datos_partido, f, ensure_ascii=False, indent=4)
+                    guardar_en_github(archivo_partido, archivo_partido, "Actualiza próximo partido")
+                    st.success("¡Cartel actualizado y guardado!")
+                    st.rerun()
 
 st.markdown(f"""
 
