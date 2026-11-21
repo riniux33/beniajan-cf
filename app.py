@@ -7,6 +7,7 @@ import re
 import random
 import base64
 import time
+import shutil
 from PIL import Image, ImageOps
 from github import Github
 
@@ -54,10 +55,23 @@ def cargar_datos_carrusel():
         try:
             with open(ARCHIVO_CARRUSEL, "r", encoding="utf-8") as f:
                 datos = json.load(f)
-                if isinstance(datos, list):
+                if isinstance(datos, list) and len(datos) > 0:
                     return datos[:MAX_FOTOS_CARRUSEL]
         except Exception:
-            return []
+            pass
+
+    # Si aún no existe el carrusel pero sí equipo_portada.jpg, la migra automáticamente como Foto 1
+    if os.path.exists("equipo_portada.jpg"):
+        if not os.path.exists(CARPETA_CARRUSEL):
+            os.makedirs(CARPETA_CARRUSEL)
+        ruta_dest = os.path.join(CARPETA_CARRUSEL, "portada_inicial.jpg")
+        if not os.path.exists(ruta_dest):
+            shutil.copy("equipo_portada.jpg", ruta_dest)
+        inicial = [{"archivo": "portada_inicial.jpg", "pie": "Beniaján C.F. - Infantil A · Temporada 2026/2027"}]
+        with open(ARCHIVO_CARRUSEL, "w", encoding="utf-8") as f:
+            json.dump(inicial, f, ensure_ascii=False, indent=4)
+        return inicial
+
     return []
 
 def guardar_datos_carrusel(lista_items):
@@ -71,7 +85,6 @@ def procesar_y_guardar_foto_carrusel(archivo_subido):
         os.makedirs(CARPETA_CARRUSEL)
     img = Image.open(archivo_subido)
     img = ImageOps.exif_transpose(img).convert("RGB")
-    # Redimensionar manteniendo proporción con un ancho máximo óptimo para web
     img.thumbnail((1400, 900), Image.Resampling.LANCZOS)
     marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     nombre_limpio = re.sub(r"[^a-zA-Z0-9_-]", "_", os.path.splitext(archivo_subido.name)[0])[:30]
