@@ -331,9 +331,9 @@ transform: translateY(-2px);
 
 """, unsafe_allow_html=True)
 
-======================================
-3. ENCABEZADO SUPERIOR CON ESCUDO
-======================================
+# ======================================
+# 3. ENCABEZADO SUPERIOR CON ESCUDO
+# ======================================
     
 col1, col2 = st.columns([1, 4])
 with col1:
