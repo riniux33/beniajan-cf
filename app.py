@@ -597,7 +597,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 # Contadores para los accesos rápidos
     # Contadores para los accesos rápidos
-    num_jugadores = 0
+num_jugadores = 0
     if os.path.exists("plantilla.csv"):
         df_tmp_pl = normalizar_plantilla(pd.read_csv("plantilla.csv"))
         num_jugadores = len(df_tmp_pl)
