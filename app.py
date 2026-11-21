@@ -384,160 +384,195 @@ st.sidebar.caption("Aplicación del equipo")
 # ======================================
 # PANTALLA DE INICIO
 # ======================================
-
+# ======================================
+# PANTALLA DE INICIO
+# ======================================
 if opcion == "Inicio":
-items_carrusel = cargar_datos_carrusel()
-slides_validos = [
-item for item in items_carrusel
-if os.path.exists(os.path.join(CARPETA_CARRUSEL, item.get("archivo", "")))
-]
-# Panel de administración del carrusel (hasta 21 fotos ordenables)
-if es_admin:
-with st.expander(f"🎠 Gestionar Carrusel de Inicio ({len(slides_validos)} / {MAX_FOTOS_CARRUSEL} fotos)", expanded=False):
-if len(slides_validos) >= MAX_FOTOS_CARRUSEL:
-st.warning(f"Has alcanzado el límite máximo de {MAX_FOTOS_CARRUSEL} fotos en el carrusel. Elimina alguna para subir una nueva.")
-else:
-with st.form("form_subir_carrusel", clear_on_submit=True):
-nueva_foto_c = st.file_uploader(
-"Añadir fotografía al carrusel (formato horizontal recomendado):",
-type=["jpg", "jpeg", "png", "webp"]
-)
-pie_foto_c = st.text_input(
-"Pie de foto (ej. Equipo Infantil A - Temporada 2026/2027):",
-max_chars=120
-)
-if st.form_submit_button("➕ Añadir foto al carrusel", type="primary"):
-if nueva_foto_c is None:
-st.warning("Selecciona primero una imagen.")
-else:
-nombre_guardado = procesar_y_guardar_foto_carrusel(nueva_foto_c)
-items_carrusel.append({
-"archivo": nombre_guardado,
-"pie": pie_foto_c.strip() if pie_foto_c.strip() else "Beniaján C.F. - Infantil A"
-})
-guardar_datos_carrusel(items_carrusel)
-st.session_state.carrusel_idx = len(items_carrusel) - 1
-st.success("¡Foto añadida al carrusel!")
-st.rerun()
-if slides_validos:
-st.divider()
-st.markdown("Ordenar, editar pie o eliminar fotos del carrusel:")
-for idx_c, slide_c in enumerate(items_carrusel):
-ruta_s = os.path.join(CARPETA_CARRUSEL, slide_c.get("archivo", ""))
-if not os.path.exists(ruta_s):
-continue
-c_img, c_txt, c_ord = st.columns([1.2, 3.3, 1.5])
-with c_img:
-st.image(ruta_s, use_container_width=True)
-with c_txt:
-nuevo_pie = st.text_input(
-f"Posición #{idx_c + 1} · Pie de foto:",
-value=slide_c.get("pie", ""),
-key=f"pie_carrusel_{idx_c}"
-)
-if nuevo_pie != slide_c.get("pie", ""):
-if st.button("💾 Guardar pie", key=f"save_pie_{idx_c}"):
-items_carrusel[idx_c]["pie"] = nuevo_pie.strip()
-guardar_datos_carrusel(items_carrusel)
-st.success("Pie de foto actualizado.")
-st.rerun()
-with c_ord:
-st.write("")
-b_up, b_dn, b_del = st.columns(3)
-with b_up:
-if idx_c > 0 and st.button("⬆️", key=f"up_c_{idx_c}", help="Subir posición"):
-items_carrusel[idx_c - 1], items_carrusel[idx_c] = items_carrusel[idx_c], items_carrusel[idx_c - 1]
-guardar_datos_carrusel(items_carrusel)
-st.rerun()
-with b_dn:
-if idx_c < len(items_carrusel) - 1 and st.button("⬇️", key=f"dn_c_{idx_c}", help="Bajar posición"):
-items_carrusel[idx_c + 1], items_carrusel[idx_c] = items_carrusel[idx_c], items_carrusel[idx_c + 1]
-guardar_datos_carrusel(items_carrusel)
-st.rerun()
-with b_del:
-if st.button("🗑️", key=f"del_c_{idx_c}", help="Eliminar del carrusel"):
-archivo_borrar = items_carrusel.pop(idx_c)["archivo"]
-ruta_b = os.path.join(CARPETA_CARRUSEL, archivo_borrar)
-if os.path.exists(ruta_b):
-os.remove(ruta_b)
-borrar_en_github(f"{CARPETA_CARRUSEL}/{archivo_borrar}", f"Elimina foto carrusel: {archivo_borrar}")
-guardar_datos_carrusel(items_carrusel)
-st.session_state.carrusel_idx = 0
-st.success("Foto eliminada del carrusel.")
-st.rerun()
-# Carrusel interactivo en Inicio (justo donde está la foto principal, encima de Próximo Partido)
-if slides_validos:
-total_slides = len(slides_validos)
-if st.session_state.carrusel_idx >= total_slides or st.session_state.carrusel_idx < 0:
-st.session_state.carrusel_idx = 0
-slide_actual = slides_validos[st.session_state.carrusel_idx]
-ruta_slide = os.path.join(CARPETA_CARRUSEL, slide_actual["archivo"])
-b64_slide = imagen_a_base64(ruta_slide)
-pie_actual = slide_actual.get("pie", "Beniaján C.F. - Infantil A")
-st.markdown(f"""
 
-BENIAJÁN C.F.
-Aplicación oficial de nuestro equipo - Infantil A · Temporada 2026/2027
+    items_carrusel = cargar_datos_carrusel()
+    slides_validos = [
+        item for item in items_carrusel
+        if os.path.exists(os.path.join(CARPETA_CARRUSEL, item.get("archivo", "")))
+    ]
 
-📸 {pie_actual}
-Foto {st.session_state.carrusel_idx + 1} de {total_slides}
-""", unsafe_allow_html=True)
-nav_c1, nav_c2, nav_c3 = st.columns([1.2, 1.6, 1.2])
-with nav_c1:
-if st.button("⬅️ Anterior", key="btn_carrusel_prev", use_container_width=True, disabled=(total_slides <= 1)):
-st.session_state.carrusel_idx = (st.session_state.carrusel_idx - 1) % total_slides
-st.rerun()
-with nav_c2:
-auto_activo = st.toggle(
-"▶️ Pase automático (4 s)",
-value=st.session_state.carrusel_auto,
-key="toggle_carrusel_auto",
-disabled=(total_slides <= 1)
-)
-st.session_state.carrusel_auto = auto_activo
-with nav_c3:
-if st.button("Siguiente ➡️", key="btn_carrusel_next", use_container_width=True, disabled=(total_slides <= 1)):
-st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % total_slides
-st.rerun()
-else:
-st.markdown("""
+    # Panel de administración del carrusel (hasta 21 fotos ordenables)
+    if es_admin:
+        with st.expander(f"🎠 Gestionar Carrusel de Inicio ({len(slides_validos)} / {MAX_FOTOS_CARRUSEL} fotos)", expanded=False):
+            if len(slides_validos) >= MAX_FOTOS_CARRUSEL:
+                st.warning(f"Has alcanzado el límite máximo de {MAX_FOTOS_CARRUSEL} fotos en el carrusel. Elimina alguna para subir una nueva.")
+            else:
+                with st.form("form_subir_carrusel", clear_on_submit=True):
+                    nueva_foto_c = st.file_uploader(
+                        "Añadir fotografía al carrusel (formato horizontal recomendado):",
+                        type=["jpg", "jpeg", "png", "webp"]
+                    )
+                    pie_foto_c = st.text_input(
+                        "Pie de foto (ej. Equipo Infantil A - Temporada 2026/2027):",
+                        max_chars=120
+                    )
+                    if st.form_submit_button("➕ Añadir foto al carrusel", type="primary"):
+                        if nueva_foto_c is None:
+                            st.warning("Selecciona primero una imagen.")
+                        else:
+                            nombre_guardado = procesar_y_guardar_foto_carrusel(nueva_foto_c)
+                            items_carrusel.append({
+                                "archivo": nombre_guardado,
+                                "pie": pie_foto_c.strip() if pie_foto_c.strip() else "Beniaján C.F. - Infantil A"
+                            })
+                            guardar_datos_carrusel(items_carrusel)
+                            st.session_state.carrusel_idx = len(items_carrusel) - 1
+                            st.success("¡Foto añadida al carrusel!")
+                            st.rerun()
 
-BENIAJÁN C.F.
-Aplicación oficial de nuestro equipo - Infantil A
-Temporada 2026/2027
+            if slides_validos:
+                st.divider()
+                st.markdown("**Ordenar, editar pie o eliminar fotos del carrusel:**")
+                for idx_c, slide_c in enumerate(items_carrusel):
+                    ruta_s = os.path.join(CARPETA_CARRUSEL, slide_c.get("archivo", ""))
+                    if not os.path.exists(ruta_s):
+                        continue
+                    c_img, c_txt, c_ord = st.columns([1.2, 3.3, 1.5])
+                    with c_img:
+                        st.image(ruta_s, use_container_width=True)
+                    with c_txt:
+                        nuevo_pie = st.text_input(
+                            f"Posición #{idx_c + 1} · Pie de foto:",
+                            value=slide_c.get("pie", ""),
+                            key=f"pie_carrusel_{idx_c}"
+                        )
+                        if nuevo_pie != slide_c.get("pie", ""):
+                            if st.button("💾 Guardar pie", key=f"save_pie_{idx_c}"):
+                                items_carrusel[idx_c]["pie"] = nuevo_pie.strip()
+                                guardar_datos_carrusel(items_carrusel)
+                                st.success("Pie de foto actualizado.")
+                                st.rerun()
+                    with c_ord:
+                        st.write("")
+                        b_up, b_dn, b_del = st.columns(3)
+                        with b_up:
+                            if idx_c > 0 and st.button("⬆️", key=f"up_c_{idx_c}", help="Subir posición"):
+                                items_carrusel[idx_c - 1], items_carrusel[idx_c] = items_carrusel[idx_c], items_carrusel[idx_c - 1]
+                                guardar_datos_carrusel(items_carrusel)
+                                st.rerun()
+                        with b_dn:
+                            if idx_c < len(items_carrusel) - 1 and st.button("⬇️", key=f"dn_c_{idx_c}", help="Bajar posición"):
+                                items_carrusel[idx_c + 1], items_carrusel[idx_c] = items_carrusel[idx_c], items_carrusel[idx_c + 1]
+                                guardar_datos_carrusel(items_carrusel)
+                                st.rerun()
+                        with b_del:
+                            if st.button("🗑️", key=f"del_c_{idx_c}", help="Eliminar del carrusel"):
+                                archivo_borrar = items_carrusel.pop(idx_c)["archivo"]
+                                ruta_b = os.path.join(CARPETA_CARRUSEL, archivo_borrar)
+                                if os.path.exists(ruta_b):
+                                    os.remove(ruta_b)
+                                borrar_en_github(f"{CARPETA_CARRUSEL}/{archivo_borrar}", f"Elimina foto carrusel: {archivo_borrar}")
+                                guardar_datos_carrusel(items_carrusel)
+                                st.session_state.carrusel_idx = 0
+                                st.success("Foto eliminada del carrusel.")
+                                st.rerun()
 
-""", unsafe_allow_html=True)
-st.write("")
-# Banner destacado con el último comunicado del entrenador
-if os.path.exists("comunicados.csv"):
-df_com_inicio = pd.read_csv("comunicados.csv")
-if not df_com_inicio.empty:
-oficiales = df_com_inicio[df_com_inicio["Rol"] == "Entrenador"]
-ultimo = oficiales.iloc[0] if not oficiales.empty else df_com_inicio.iloc[0]
-st.markdown(f"""
+    # Carrusel interactivo en Inicio (justo donde está la foto principal, encima de Próximo Partido)
+    if slides_validos:
+        total_slides = len(slides_validos)
+        if st.session_state.carrusel_idx >= total_slides or st.session_state.carrusel_idx < 0:
+            st.session_state.carrusel_idx = 0
 
-📢 ÚLTIMO AVISO ({ultimo['Autor']} · {ultimo['Fecha']}):
+        slide_actual = slides_validos[st.session_state.carrusel_idx]
+        ruta_slide = os.path.join(CARPETA_CARRUSEL, slide_actual["archivo"])
+        b64_slide = imagen_a_base64(ruta_slide)
+        pie_actual = slide_actual.get("pie", "Beniaján C.F. - Infantil A")
 
-{ultimo['Mensaje']}
+        st.markdown(f"""
+        <div style="
+            background-image: linear-gradient(to top, rgba(23,32,51,0.92) 0%, rgba(23,32,51,0.18) 42%, rgba(23,32,51,0.02) 100%), url('data:image/jpeg;base64,{b64_slide}');
+            background-size: cover;
+            background-position: center center;
+            min-height: 320px;
+            padding: 20px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 12px rgba(23,32,51,0.14);
+        ">
+            <h1 style="color: #ffcc00; font-size: clamp(1.4rem, 4.5vw, 2.3rem); margin: 0 0 4px 0; text-shadow: 1px 1px 4px rgba(0,0,0,0.85);">BENIAJÁN C.F.</h1>
+            <p style="margin: 0; font-size: clamp(0.85rem, 2.8vw, 1.05rem); text-shadow: 1px 1px 3px rgba(0,0,0,0.85);">Aplicación oficial de nuestro equipo - Infantil A · Temporada 2026/2027</p>
+        </div>
+        <div class="carrusel-barra">
+            <span class="carrusel-pie">📸 {pie_actual}</span>
+            <span class="carrusel-contador">Foto {st.session_state.carrusel_idx + 1} de {total_slides}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-""", unsafe_allow_html=True)
-archivo_partido = "proximo_partido.json"
-datos_partido = {
-"encuentro": "BENIAJÁN C.F. - EQUIPO RIVAL",
-"fecha_hora": "Sábado | 10:00 horas",
-"campo": "Campo de fútbol",
-"citacion": "09:15 horas"
-}
-if os.path.exists(archivo_partido):
-with open(archivo_partido, "r", encoding="utf-8") as f:
-datos_partido = json.load(f)
-if es_admin:
-with st.expander("✏️ Editar cartel de Próximo Partido"):
-with st.form("form_proximo_partido"):
-nuevo_encuentro = st.text_input("Partido (Local - Visitante):", value=datos_partido["encuentro"])
-nueva_fecha = st.text_input("Día y hora:", value=datos_partido["fecha_hora"])
-nuevo_campo = st.text_input("Campo:", value=datos_partido["campo"])
-nueva_citacion = st.text_input("Hora de citación:", value=datos_partido["citacion"])
+        nav_c1, nav_c2, nav_c3 = st.columns([1.2, 1.6, 1.2])
+        with nav_c1:
+            if st.button("⬅️ Anterior", key="btn_carrusel_prev", use_container_width=True, disabled=(total_slides <= 1)):
+                st.session_state.carrusel_idx = (st.session_state.carrusel_idx - 1) % total_slides
+                st.rerun()
+        with nav_c2:
+            auto_activo = st.toggle(
+                "▶️ Pase automático (4 s)",
+                value=st.session_state.carrusel_auto,
+                key="toggle_carrusel_auto",
+                disabled=(total_slides <= 1)
+            )
+            st.session_state.carrusel_auto = auto_activo
+        with nav_c3:
+            if st.button("Siguiente ➡️", key="btn_carrusel_next", use_container_width=True, disabled=(total_slides <= 1)):
+                st.session_state.carrusel_idx = (st.session_state.carrusel_idx + 1) % total_slides
+                st.rerun()
+    else:
+        st.markdown("""
+        <div style="
+            background-color: #172033;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+        ">
+            <h1 style="color: #ffcc00; font-size: clamp(1.5rem, 5vw, 2.4rem); margin-bottom: 5px;">BENIAJÁN C.F.</h1>
+            <p style="margin: 0;">Aplicación oficial de nuestro equipo - Infantil A</p>
+            <p style="margin: 0;">Temporada 2026/2027</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
+
+    # Banner destacado con el último comunicado del entrenador
+    if os.path.exists("comunicados.csv"):
+        df_com_inicio = pd.read_csv("comunicados.csv")
+        if not df_com_inicio.empty:
+            oficiales = df_com_inicio[df_com_inicio["Rol"] == "Entrenador"]
+            ultimo = oficiales.iloc[0] if not oficiales.empty else df_com_inicio.iloc[0]
+            st.markdown(f"""
+            <div class="aviso-portada">
+                <strong>📢 ÚLTIMO AVISO ({ultimo['Autor']} · {ultimo['Fecha']}):</strong><br>
+                {ultimo['Mensaje']}
+            </div>
+            """, unsafe_allow_html=True)
+
+    archivo_partido = "proximo_partido.json"
+    datos_partido = {
+        "encuentro": "BENIAJÁN C.F. - EQUIPO RIVAL",
+        "fecha_hora": "Sábado | 10:00 horas",
+        "campo": "Campo de fútbol",
+        "citacion": "09:15 horas"
+    }
+
+    if os.path.exists(archivo_partido):
+        with open(archivo_partido, "r", encoding="utf-8") as f:
+            datos_partido = json.load(f)
+
+    if es_admin:
+        with st.expander("✏️ Editar cartel de Próximo Partido"):
+            with st.form("form_proximo_partido"):
+                nuevo_encuentro = st.text_input("Partido (Local - Visitante):", value=datos_partido["encuentro"])
+                nueva_fecha = st.text_input("Día y hora:", value=datos_partido["fecha_hora"])
+                nuevo_campo = st.text_input("Campo:", value=datos_partido["campo"])
+                nueva_citacion = st.text_input("Hora de citación:", value=datos_partido["citacion"])
+
 if st.form_submit_button("💾 Actualizar cartel", type="primary"):
 datos_partido = {
 "encuentro": nuevo_encuentro,
