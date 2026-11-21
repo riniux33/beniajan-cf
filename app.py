@@ -334,19 +334,19 @@ transform: translateY(-2px);
 # ======================================
 # 3. ENCABEZADO SUPERIOR CON ESCUDO
 # ======================================
-    
-col1, col2 = st.columns([1, 4])
-with col1:
-if os.path.exists("escudo.png.png"):
-st.image("escudo.png.png", width=100)
-elif os.path.exists("escudo.png"):
-st.image("escudo.png", width=100)
-else:
-st.markdown("# ⚽")
-with col2:
-st.title("Beniaján C.F.")
-st.subheader("Infantil A · Temporada 2026/2027")
+ col1, col2 = st.columns([1, 4])
 
+with col1:
+    if os.path.exists("escudo.png.png"):
+        st.image("escudo.png.png", width=100)
+    elif os.path.exists("escudo.png"):
+        st.image("escudo.png", width=100)
+    else:
+        st.markdown("# ⚽")
+
+with col2:
+    st.title("Beniaján C.F.")
+    st.subheader("Infantil A · Temporada 2026/2027")
 ======================================
 4. MENÚ LATERAL Y CONTRASEÑA
 ======================================
