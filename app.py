@@ -6,6 +6,7 @@ import os
 import re
 import random
 import base64
+import time
 from PIL import Image, ImageOps
 from github import Github
 
@@ -40,6 +41,45 @@ def imagen_a_base64(ruta_img):
         with open(ruta_img, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
     return None
+
+# ======================================
+# GESTIÓN DEL CARRUSEL DE INICIO (HASTA 21 FOTOS)
+# ======================================
+CARPETA_CARRUSEL = "carrusel_inicio"
+ARCHIVO_CARRUSEL = "carrusel_inicio.json"
+MAX_FOTOS_CARRUSEL = 21
+
+def cargar_datos_carrusel():
+    if os.path.exists(ARCHIVO_CARRUSEL):
+        try:
+            with open(ARCHIVO_CARRUSEL, "r", encoding="utf-8") as f:
+                datos = json.load(f)
+                if isinstance(datos, list):
+                    return datos[:MAX_FOTOS_CARRUSEL]
+        except Exception:
+            return []
+    return []
+
+def guardar_datos_carrusel(lista_items):
+    lista_limitada = lista_items[:MAX_FOTOS_CARRUSEL]
+    with open(ARCHIVO_CARRUSEL, "w", encoding="utf-8") as f:
+        json.dump(lista_limitada, f, ensure_ascii=False, indent=4)
+    guardar_en_github(ARCHIVO_CARRUSEL, ARCHIVO_CARRUSEL, "Actualiza índice de carrusel de inicio")
+
+def procesar_y_guardar_foto_carrusel(archivo_subido):
+    if not os.path.exists(CARPETA_CARRUSEL):
+        os.makedirs(CARPETA_CARRUSEL)
+    img = Image.open(archivo_subido)
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    # Redimensionar manteniendo proporción con un ancho máximo óptimo para web
+    img.thumbnail((1400, 900), Image.Resampling.LANCZOS)
+    marca_tiempo = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    nombre_limpio = re.sub(r"[^a-zA-Z0-9_-]", "_", os.path.splitext(archivo_subido.name)[0])[:30]
+    nombre_archivo = f"slide_{marca_tiempo}_{nombre_limpio}.jpg"
+    ruta_local = os.path.join(CARPETA_CARRUSEL, nombre_archivo)
+    img.save(ruta_local, format="JPEG", quality=88)
+    guardar_en_github(ruta_local, f"{CARPETA_CARRUSEL}/{nombre_archivo}", f"Nueva foto carrusel: {nombre_archivo}")
+    return nombre_archivo
 
 # ======================================
 # GESTIÓN DE FOTOS DE JUGADORES
@@ -155,6 +195,12 @@ st.set_page_config(
 if "seccion_actual" not in st.session_state:
     st.session_state.seccion_actual = "Inicio"
 
+if "carrusel_idx" not in st.session_state:
+    st.session_state.carrusel_idx = 0
+
+if "carrusel_auto" not in st.session_state:
+    st.session_state.carrusel_auto = False
+
 def ir_a(seccion):
     st.session_state.seccion_actual = seccion
 
@@ -183,6 +229,34 @@ st.markdown("""
     border-radius: 10px;
     margin-bottom: 18px;
     color: #172033;
+}
+.carrusel-barra {
+    background-color: #172033;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-left: 5px solid #ffcc00;
+}
+.carrusel-pie {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ffffff;
+}
+.carrusel-contador {
+    background-color: #ffcc00;
+    color: #172033;
+    font-weight: 800;
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
 }
 .ficha-jugador {
     background-color: white;
