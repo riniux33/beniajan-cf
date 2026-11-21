@@ -380,9 +380,9 @@ st.sidebar.divider()
 st.sidebar.caption("Temporada 2026/2027")
 st.sidebar.caption("Aplicación del equipo")
 
-======================================
-PANTALLA DE INICIO
-======================================
+# ======================================
+# PANTALLA DE INICIO
+# ======================================
 
 if opcion == "Inicio":
 items_carrusel = cargar_datos_carrusel()
