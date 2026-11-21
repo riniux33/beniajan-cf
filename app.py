@@ -328,7 +328,6 @@ border-color: #172033;
 background-color: #eef1f6;
 transform: translateY(-2px);
 }
-
 """, unsafe_allow_html=True)
 
 # ======================================
@@ -348,40 +347,40 @@ with col2:
     st.title("Beniaján C.F.")
     st.subheader("Infantil A · Temporada 2026/2027")
 
-
 # ======================================
 # 4. MENÚ LATERAL Y CONTRASEÑA
 # ======================================
-    
+
 st.sidebar.title("⚽ BENIAJÁN C.F.")
 st.sidebar.markdown("### Menú principal")
+
 secciones = [
-"Inicio",
-"Plantilla",
-"Calendario",
-"Convocatorias",
-"Comunicados",
-"Galería"
+    "Inicio",
+    "Plantilla",
+    "Calendario",
+    "Convocatorias",
+    "Comunicados",
+    "Galería"
 ]
 opcion = st.sidebar.radio(
-"Selecciona una sección:",
-secciones,
-key="seccion_actual"
+    "Selecciona una sección:",
+    secciones,
+    key="seccion_actual"
 )
 st.sidebar.divider()
 st.sidebar.subheader("🔒 Acceso Cuerpo Técnico")
 clave_introducida = st.sidebar.text_input("Contraseña de edición:", type="password")
 es_admin = False
 if clave_introducida:
-if "password_entrenador" in st.secrets and clave_introducida == st.secrets["password_entrenador"]:
-es_admin = True
-st.sidebar.success("Modo edición activado")
-else:
-st.sidebar.error("Contraseña incorrecta")
+    if "password_entrenador" in st.secrets and clave_introducida == st.secrets["password_entrenador"]:
+        es_admin = True
+        st.sidebar.success("Modo edición activado")
+    else:
+        st.sidebar.error("Contraseña incorrecta")
 st.sidebar.divider()
 st.sidebar.caption("Temporada 2026/2027")
 st.sidebar.caption("Aplicación del equipo")
-
+  
 # ======================================
 # PANTALLA DE INICIO
 # ======================================
